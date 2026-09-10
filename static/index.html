@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Professor MD</title>
+<style>
+body{font-family:Arial,sans-serif;margin:0;background:#f5f7fb;color:#172033}
+header{background:#182848;color:white;padding:22px}
+main{max-width:900px;margin:auto;padding:22px}
+.card{background:white;border-radius:16px;padding:20px;margin:14px 0;box-shadow:0 2px 12px #0001}
+button{padding:12px 16px;border:0;border-radius:10px;background:#182848;color:white}
+input{padding:10px;width:100%;box-sizing:border-box;margin:10px 0}
+.status{font-weight:bold}
+</style>
+</head>
+<body>
+<header><h1>Professor MD</h1><p>Seu professor particular para a preparação FUMARC — TRT-MG</p></header>
+<main>
+<div class="card">
+<h2>O que estudar hoje</h2>
+<p>Plano de 2 horas: 40 min de teoria + 20 min de Engenharia Reversa, em cada bloco.</p>
+<p class="status" id="status">Verificando conexão...</p>
+</div>
+<div class="card">
+<h2>Enviar PDF</h2>
+<input id="pdf" type="file" accept=".pdf">
+<button onclick="enviar()">Enviar PDF</button>
+<p id="msg"></p>
+</div>
+<div class="card">
+<h2>Professor MD está online</h2>
+<p>Esta é a versão corrigida da página inicial.</p>
+</div>
+</main>
+<script>
+async function checar(){
+  try{
+    const r=await fetch('/health');
+    const d=await r.json();
+    document.getElementById('status').textContent =
+      d.status==='ok' ? '🟢 Sistema online' : '🔴 Verifique o servidor';
+  }catch(e){
+    document.getElementById('status').textContent='🔴 Não foi possível conectar';
+  }
+}
+async function enviar(){
+  const f=document.getElementById('pdf').files[0];
+  if(!f){document.getElementById('msg').textContent='Selecione um PDF.';return;}
+  const fd=new FormData(); fd.append('file',f);
+  try{
+    const r=await fetch('/api/upload',{method:'POST',body:fd});
+    const d=await r.json();
+    document.getElementById('msg').textContent=d.ok?'PDF enviado: '+d.filename:'Erro ao enviar.';
+  }catch(e){document.getElementById('msg').textContent='Erro de conexão.';}
+}
+checar();
+</script>
+</body>
+</html>
