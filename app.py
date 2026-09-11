@@ -1,10 +1,14 @@
+# Professor MD 4.4
 from pathlib import Path
 import os, sqlite3, json, threading, time
 from datetime import datetime, date, timedelta
 import re
 import textwrap
+import hashlib
+import urllib.request
+import urllib.parse
 from fastapi import FastAPI, UploadFile, File, Form
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from openai import OpenAI
 
@@ -22,12 +26,56 @@ VECTOR_STORE_ID = os.getenv("OPENAI_VECTOR_STORE_ID", "").strip()
 MAX_PDF_BYTES = 25 * 1024 * 1024
 VS_LOCK = threading.Lock()
 
-app = FastAPI(title="Professor MD", version="4.3")
+app = FastAPI(title="Professor MD", version="4.4")
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_credentials=True,
     allow_methods=["*"], allow_headers=["*"]
 )
 
+
+def supabase_configured():
+    return bool(os.getenv("SUPABASE_URL", "").strip() and os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip())
+
+SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip().rstrip("/")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "professor-md-pdfs").strip() or "professor-md-pdfs"
+
+def _sb_request(method, path, data=None, content_type=None):
+    if not supabase_configured():
+        raise RuntimeError("Biblioteca permanente não configurada. Defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no Render.")
+    url = SUPABASE_URL + path
+    headers = {"Authorization": "Bearer " + SUPABASE_SERVICE_ROLE_KEY, "apikey": SUPABASE_SERVICE_ROLE_KEY}
+    if content_type:
+        headers["Content-Type"] = content_type
+    req = urllib.request.Request(url, data=data, headers=headers, method=method)
+    with urllib.request.urlopen(req, timeout=45) as resp:
+        return resp.read(), resp.headers.get("content-type", "")
+
+def supabase_upload(path, data, content_type="application/pdf", upsert=False):
+    encoded = "/".join(urllib.parse.quote(x, safe="") for x in path.split("/"))
+    endpoint = f"/storage/v1/object/{urllib.parse.quote(SUPABASE_BUCKET, safe='')}/{encoded}"
+    if upsert:
+        endpoint += "?upsert=true"
+    _sb_request("POST", endpoint, data=data, content_type=content_type)
+
+def supabase_download(path):
+    encoded = "/".join(urllib.parse.quote(x, safe="") for x in path.split("/"))
+    endpoint = f"/storage/v1/object/{urllib.parse.quote(SUPABASE_BUCKET, safe='')}/{encoded}"
+    data, _ = _sb_request("GET", endpoint)
+    return data
+
+def supabase_list(prefix="pdfs/"):
+    body=json.dumps({"prefix":prefix,"limit":1000,"offset":0,"sortBy":{"column":"name","order":"desc"}}).encode()
+    data,_=_sb_request("POST", f"/storage/v1/object/list/{urllib.parse.quote(SUPABASE_BUCKET, safe='')}", body, "application/json")
+    return json.loads(data.decode("utf-8"))
+
+def storage_path_for(filename, data):
+    digest=hashlib.sha256(data).hexdigest()[:20]
+    return f"pdfs/{digest}_{filename}"
+
+def metadata_path_for(storage_path):
+    name=storage_path.split("/",1)[1]
+    return f"meta/{name}.json"
 
 def conn():
     c = sqlite3.connect(DB)
@@ -49,6 +97,12 @@ def conn():
         c.execute("ALTER TABLE materials ADD COLUMN processing_error TEXT DEFAULT ''")
     if "size_bytes" not in cols:
         c.execute("ALTER TABLE materials ADD COLUMN size_bytes INTEGER DEFAULT 0")
+    if "storage_path" not in cols:
+        c.execute("ALTER TABLE materials ADD COLUMN storage_path TEXT DEFAULT ''")
+    if "storage_backend" not in cols:
+        c.execute("ALTER TABLE materials ADD COLUMN storage_backend TEXT DEFAULT 'local'")
+    if "sha256" not in cols:
+        c.execute("ALTER TABLE materials ADD COLUMN sha256 TEXT DEFAULT ''")
     c.execute("""CREATE TABLE IF NOT EXISTS sessions(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         discipline TEXT, topic TEXT, minutes INTEGER,
@@ -292,7 +346,7 @@ def home():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "app": "Professor MD", "version": "4.3"}
+    return {"status": "ok", "app": "Professor MD", "version": "4.4"}
 
 
 @app.get("/api/status")
@@ -302,7 +356,9 @@ def status():
         "openai_configured": bool(os.getenv("OPENAI_API_KEY")),
         "file_search_configured": bool(current_vs()),
         "model": MODEL,
-        "upload_mode": "background"
+        "upload_mode": "background",
+        "library_persistent": supabase_configured(),
+        "library_mode": "Supabase Storage" if supabase_configured() else "filesystem local"
     }
 
 
@@ -394,8 +450,24 @@ def process_pdf_background(material_id, name, data):
         # continue processing it after this call; the UI will show the state.
         client.vector_stores.files.create(vector_store_id=vs, file_id=oid)
         update_material(material_id, processing_status="ready", processing_error="")
+        # Keep the persistent library metadata synchronized so a Render restart
+        # can rebuild the visible library and continue using the same OpenAI file.
+        c=conn(); row=c.execute("SELECT * FROM materials WHERE id=?",(material_id,)).fetchone(); c.close()
+        if row and row["storage_backend"]=="supabase" and row["storage_path"]:
+            meta={"filename":row["filename"],"subject":row["subject"] or "","topic":row["topic"] or "",
+                  "created_at":row["created_at"] or "","size_bytes":row["size_bytes"] or 0,"sha256":row["sha256"] or "",
+                  "storage_path":row["storage_path"],"openai_file_id":oid,"vector_store_id":vs,"processing_status":"ready"}
+            try: supabase_upload(metadata_path_for(row["storage_path"]), json.dumps(meta,ensure_ascii=False).encode("utf-8"), "application/json", upsert=True)
+            except Exception: pass
     except Exception as e:
         update_material(material_id, processing_status="error", processing_error=str(e))
+        try:
+            c=conn(); row=c.execute("SELECT * FROM materials WHERE id=?",(material_id,)).fetchone(); c.close()
+            if row and row["storage_backend"]=="supabase" and row["storage_path"]:
+                meta={"filename":row["filename"],"subject":row["subject"] or "","topic":row["topic"] or "","created_at":row["created_at"] or "",
+                      "size_bytes":row["size_bytes"] or 0,"sha256":row["sha256"] or "","storage_path":row["storage_path"],"processing_status":"error","processing_error":str(e)}
+                supabase_upload(metadata_path_for(row["storage_path"]), json.dumps(meta,ensure_ascii=False).encode("utf-8"), "application/json", upsert=True)
+        except Exception: pass
 
 
 @app.post("/api/upload")
@@ -410,41 +482,45 @@ async def upload(file: UploadFile = File(...), subject: str = Form(""), topic: s
         return JSONResponse({"ok": False, "error": "PDF muito grande. O limite desta versão é 25 MB."}, status_code=413)
 
     name = Path(file.filename).name
-    # Avoid overwriting a previous file with the same name.
-    safe_name = name
-    target = UPLOADS / safe_name
-    if target.exists():
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        safe_name = f"{target.stem}_{stamp}{target.suffix}"
-        target = UPLOADS / safe_name
-    target.write_bytes(data)
+    digest = hashlib.sha256(data).hexdigest()
+    storage_backend = "supabase" if supabase_configured() else "local"
+    storage_path = ""
+
+    try:
+        if supabase_configured():
+            storage_path = storage_path_for(name, data)
+            supabase_upload(storage_path, data, "application/pdf", upsert=False)
+            meta = {"filename": name, "subject": subject, "topic": topic, "created_at": datetime.now().isoformat(),
+                    "size_bytes": len(data), "sha256": digest, "storage_path": storage_path}
+            supabase_upload(metadata_path_for(storage_path), json.dumps(meta, ensure_ascii=False).encode("utf-8"), "application/json", upsert=True)
+        else:
+            safe_name = name
+            target = UPLOADS / safe_name
+            if target.exists():
+                stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                safe_name = f"{target.stem}_{stamp}{target.suffix}"
+                target = UPLOADS / safe_name
+            target.write_bytes(data)
+            name = safe_name
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": "Não foi possível salvar o PDF na biblioteca: " + str(e)}, status_code=500)
 
     c = conn()
     cur = c.execute("""INSERT INTO materials(
         filename, openai_file_id, vector_store_id, subject, topic, created_at,
-        processing_status, processing_error, size_bytes)
-        VALUES(?,?,?,?,?,?,?,?,?)""",
-        (safe_name, None, current_vs(), subject, topic,
-         datetime.now().isoformat(), "queued", "", len(data)))
+        processing_status, processing_error, size_bytes, storage_path, storage_backend, sha256)
+        VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (name, None, current_vs(), subject, topic, datetime.now().isoformat(), "queued", "", len(data), storage_path, storage_backend, digest))
     material_id = cur.lastrowid
     c.commit(); c.close()
 
-    # Start processing without blocking the browser request.
-    worker = threading.Thread(
-        target=process_pdf_background,
-        args=(material_id, safe_name, data),
-        daemon=True,
-        name=f"professor-md-pdf-{material_id}"
-    )
+    worker = threading.Thread(target=process_pdf_background, args=(material_id, name, data), daemon=True, name=f"professor-md-pdf-{material_id}")
     worker.start()
 
     return {
-        "ok": True,
-        "id": material_id,
-        "filename": safe_name,
-        "status": "queued",
-        "message": "PDF recebido. O processamento continuará em segundo plano.",
-        "file_search_configured": bool(current_vs())
+        "ok": True, "id": material_id, "filename": name, "status": "queued",
+        "message": "PDF salvo na biblioteca. O processamento continuará em segundo plano." if supabase_configured() else "PDF recebido. O processamento continuará em segundo plano.",
+        "library_persistent": supabase_configured(), "file_search_configured": bool(current_vs())
     }
 
 
@@ -471,8 +547,10 @@ def _source_prompt(material_id, kind):
     c.close()
     if not row:
         raise RuntimeError("PDF não encontrado.")
-    if row["processing_status"] != "ready":
+    if row["processing_status"] not in ("ready", "archived"):
         raise RuntimeError("Este PDF ainda não está pronto. Aguarde o processamento terminar.")
+    if row["processing_status"] == "archived" and not row["openai_file_id"]:
+        raise RuntimeError("Este PDF está salvo na biblioteca, mas ainda precisa ser processado pela IA.")
     filename = row["filename"]
     subject = row["subject"] or ""
     topic = row["topic"] or ""
@@ -509,10 +587,10 @@ def _ai_json(material_id, kind):
     key = os.getenv("OPENAI_API_KEY")
     if not key:
         raise RuntimeError("Configure OPENAI_API_KEY no Render antes de gerar o PDF.")
-    vs = current_vs()
+    row, instruction = _source_prompt(material_id, kind)
+    vs = row["vector_store_id"] or current_vs()
     if not vs:
         raise RuntimeError("O File Search ainda não está configurado. Envie e processe um PDF primeiro.")
-    row, instruction = _source_prompt(material_id, kind)
     client = OpenAI(api_key=key, timeout=120.0, max_retries=2)
     r = client.responses.create(
         model=MODEL,
@@ -768,5 +846,43 @@ def today():
 
 @app.get("/api/materials")
 def materials():
-    c = conn(); rows = c.execute("SELECT * FROM materials ORDER BY id DESC").fetchall(); c.close()
-    return {"items": [dict(x) for x in rows]}
+    c = conn(); rows = [dict(x) for x in c.execute("SELECT * FROM materials ORDER BY id DESC").fetchall()]; c.close()
+    if supabase_configured():
+        try:
+            objects = supabase_list("pdfs/")
+            known = {x.get("storage_path") for x in rows if x.get("storage_path")}
+            for obj in objects:
+                name = obj.get("name", "")
+                if not name or name.endswith("/"): continue
+                sp = "pdfs/" + name
+                if sp in known: continue
+                try:
+                    meta = json.loads(supabase_download("meta/" + name + ".json").decode("utf-8"))
+                except Exception:
+                    meta = {"filename": name, "subject":"", "topic":"", "created_at":"", "size_bytes":0, "sha256":"", "storage_path":sp, "processing_status":"archived"}
+                c=conn()
+                cur=c.execute("""INSERT INTO materials(filename,openai_file_id,vector_store_id,subject,topic,created_at,processing_status,processing_error,size_bytes,storage_path,storage_backend,sha256)
+                                VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+                    (meta.get("filename",name),meta.get("openai_file_id"),meta.get("vector_store_id"),meta.get("subject",""),meta.get("topic",""),meta.get("created_at",""),meta.get("processing_status","archived"),meta.get("processing_error",""),meta.get("size_bytes",0),sp,"supabase",meta.get("sha256","")))
+                new_id=cur.lastrowid; c.commit(); c.close()
+                if meta.get("vector_store_id") and not current_vs(): set_setting("vector_store_id",meta.get("vector_store_id"))
+                c=conn(); recovered=c.execute("SELECT * FROM materials WHERE id=?",(new_id,)).fetchone(); c.close()
+                rows.append(dict(recovered))
+        except Exception:
+            pass
+    return {"items": rows}
+
+
+@app.get("/api/materials/{material_id}/file")
+def material_file(material_id:int):
+    c=conn(); row=c.execute("SELECT * FROM materials WHERE id=?",(material_id,)).fetchone(); c.close()
+    if not row: return JSONResponse({"ok":False,"error":"PDF não encontrado."},status_code=404)
+    if row["storage_backend"]=="supabase" and row["storage_path"]:
+        try:
+            data=supabase_download(row["storage_path"])
+            return Response(content=data, media_type="application/pdf", headers={"Content-Disposition": f'inline; filename="{row["filename"]}"'})
+        except Exception as e:
+            return JSONResponse({"ok":False,"error":"Não foi possível abrir o PDF: "+str(e)},status_code=500)
+    p=UPLOADS/Path(row["filename"]).name
+    if not p.exists(): return JSONResponse({"ok":False,"error":"Arquivo PDF não está disponível no servidor."},status_code=404)
+    return FileResponse(p,media_type="application/pdf",filename=row["filename"],headers={"Content-Disposition":f'inline; filename="{row["filename"]}"'})
