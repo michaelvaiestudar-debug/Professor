@@ -1,6 +1,6 @@
 from pathlib import Path
 import os, sqlite3, json, threading, time
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import re
 import textwrap
 from fastapi import FastAPI, UploadFile, File, Form
@@ -22,7 +22,7 @@ VECTOR_STORE_ID = os.getenv("OPENAI_VECTOR_STORE_ID", "").strip()
 MAX_PDF_BYTES = 25 * 1024 * 1024
 VS_LOCK = threading.Lock()
 
-app = FastAPI(title="Professor MD", version="4.2")
+app = FastAPI(title="Professor MD", version="4.3")
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_credentials=True,
     allow_methods=["*"], allow_headers=["*"]
@@ -59,9 +59,214 @@ def conn():
         discipline TEXT, topic TEXT, question TEXT,
         mistake TEXT, action TEXT, review_date TEXT,
         created_at TEXT)""")
+    c.execute("""CREATE TABLE IF NOT EXISTS study_topics(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_no INTEGER UNIQUE, discipline TEXT, topic TEXT,
+        priority TEXT DEFAULT 'normal', estimated_minutes INTEGER DEFAULT 60,
+        status TEXT DEFAULT 'pending', completed_at TEXT, material_id INTEGER,
+        notes TEXT DEFAULT '')""")
+    c.execute("""CREATE TABLE IF NOT EXISTS reviews(
+        id INTEGER PRIMARY KEY AUTOINCREMENT, topic_id INTEGER, discipline TEXT, topic TEXT,
+        review_date TEXT, review_type TEXT, completed INTEGER DEFAULT 0, completed_at TEXT)""")
+    seed_plan(c)
     c.commit()
     return c
 
+
+PLAN = [
+("Contabilidade Geral","Estrutura Conceitual: conceito, objetivos, usuários e necessidades de informação","A"),
+("Contabilidade Geral","Patrimônio: ativo, passivo e patrimônio líquido; aspectos qualitativo e quantitativo","A"),
+("Contabilidade Geral","Equação básica da contabilidade e representação gráfica do patrimônio","A"),
+("Contabilidade Geral","Variações patrimoniais e apuração do resultado","A"),
+("Contabilidade Geral","Plano de contas: classificação e natureza das contas","A"),
+("Contabilidade Geral","Partidas dobradas, débito, crédito, origens e aplicações","A"),
+("Contabilidade Geral","Lançamento contábil: elementos essenciais e registros","A"),
+("Contabilidade Geral","Regime de competência e livros de escrituração","A"),
+("Contabilidade Geral","Balancete de verificação e encerramento das contas de resultado","A"),
+("Contabilidade Geral","Avaliação de ativos e passivos","A"),
+("Contabilidade Geral","Balanço Patrimonial: estrutura, classificação e critérios","A"),
+("Contabilidade Geral","DRE: estrutura, formação e apuração do resultado","A"),
+("Contabilidade Geral","Demonstração do Resultado Abrangente e DLPA","B"),
+("Contabilidade Geral","DMPL: estrutura e mutações do patrimônio líquido","B"),
+("Contabilidade Geral","DFC: métodos e fluxos de caixa","A"),
+("Contabilidade Geral","DVA e distribuição da riqueza","A"),
+("Contabilidade Geral","Notas explicativas e divulgação contábil","A"),
+("Contabilidade Geral","Lei 6.404/76 e alterações da Lei 11.638/07","A"),
+("Contabilidade Geral","CPC 00 — Estrutura Conceitual","A"),
+("Contabilidade Geral","CPC 26 — Apresentação das demonstrações contábeis","A"),
+("Contabilidade Geral","CPC 03 — Demonstração dos Fluxos de Caixa","A"),
+("Contabilidade Geral","CPC 09 — Demonstração do Valor Adicionado","A"),
+("Contabilidade Geral","CPC 27 — Ativo Imobilizado: reconhecimento e mensuração","A"),
+("Contabilidade Geral","CPC 27 — Depreciação, vida útil e valor residual","A"),
+("Contabilidade Geral","CPC 01 — Redução ao Valor Recuperável de Ativos","A"),
+("Contabilidade Geral","CPC 04 — Ativo Intangível","B"),
+("Contabilidade Geral","CPC 16 — Estoques","B"),
+("Contabilidade Geral","CPC 25 — Provisões, passivos e ativos contingentes","B"),
+("Contabilidade Geral","CPC 47 — Receita de contrato com cliente","B"),
+("Contabilidade Geral","CPC 48 — Instrumentos financeiros: classificação e mensuração","B"),
+("Contabilidade Geral","CPC 06 — Arrendamentos","B"),
+("Contabilidade Geral","CPC 32 — Tributos sobre o lucro","B"),
+("Contabilidade Pública","CASP: conceito, campo de aplicação e regime orçamentário e patrimonial","A"),
+("Contabilidade Pública","Estrutura Conceitual da NBC TSP: objetivos, elementos e características","A"),
+("Contabilidade Pública","MCASP: estrutura e organização da 9ª edição prevista no edital","A"),
+("Contabilidade Pública","PCASP: classes, natureza da informação e lógica dos registros","A"),
+("Contabilidade Pública","PCASP: atributos, contas e lançamentos típicos","A"),
+("Contabilidade Pública","Receita pública: conceito e classificações","A"),
+("Contabilidade Pública","Receita pública: estágios, fontes e dívida ativa","A"),
+("Contabilidade Pública","Despesa pública: conceito e classificações","A"),
+("Contabilidade Pública","Despesa pública: empenho, liquidação e pagamento","A"),
+("Contabilidade Pública","Restos a pagar e despesas de exercícios anteriores","A"),
+("Contabilidade Pública","Procedimentos Contábeis Patrimoniais","A"),
+("Contabilidade Pública","Procedimentos Contábeis Específicos","B"),
+("Contabilidade Pública","Estoques no setor público","B"),
+("Contabilidade Pública","Imobilizado e depreciação no setor público","B"),
+("Contabilidade Pública","Intangível, provisões e contingências no setor público","B"),
+("Contabilidade Pública","Balanço Orçamentário","A"),
+("Contabilidade Pública","Balanço Financeiro","A"),
+("Contabilidade Pública","Balanço Patrimonial","A"),
+("Contabilidade Pública","Demonstração das Variações Patrimoniais","A"),
+("Contabilidade Pública","DFC e DMPL no setor público","B"),
+("Contabilidade Pública","Notas explicativas e DCASP","A"),
+("Contabilidade Pública","LRF: princípios, limites e transparência","A"),
+("Contabilidade Pública","LRF: despesa com pessoal e endividamento","A"),
+("Contabilidade Pública","RGF e RREO","A"),
+("Contabilidade Pública","Lei 4.320/64: pontos contábeis e orçamentários","A"),
+("Contabilidade Pública","Direito tributário básico, competência tributária e retenções","B"),
+("Contabilidade Pública","NBC TSP 01 a 34: visão geral e pontos de maior incidência","B"),
+("Contabilidade Pública","IPSAS e convergência das normas contábeis públicas","B"),
+("Contabilidade Pública","Auditoria no setor público: NBC TASP e asseguração","C"),
+("Contabilidade Pública","Custos no setor público: NBC T 16.11 e informações de custos","B"),
+("Contabilidade Pública","Prestação de contas e normas do TCU: IN 84/2020 e DN 198/2022","C"),
+("AFO / Orçamento Público","Conceito, técnicas e princípios orçamentários","A"),
+("AFO / Orçamento Público","Ciclo orçamentário e sistema de planejamento e orçamento","A"),
+("AFO / Orçamento Público","PPA, LDO e LOA","A"),
+("AFO / Orçamento Público","Sistema e processo de orçamentação","B"),
+("AFO / Orçamento Público","Classificações orçamentárias e estrutura programática","A"),
+("AFO / Orçamento Público","Alterações orçamentárias e créditos adicionais","A"),
+("AFO / Orçamento Público","Programação e execução orçamentária e financeira","A"),
+("AFO / Orçamento Público","Descentralização orçamentária e financeira","B"),
+("AFO / Orçamento Público","Receita pública no orçamento: classificações, estágios e fontes","A"),
+("AFO / Orçamento Público","Despesa pública no orçamento: classificações e estágios","A"),
+("AFO / Orçamento Público","Restos a pagar, despesas de exercícios anteriores e dívida","A"),
+("AFO / Orçamento Público","Dívida flutuante e dívida fundada","B"),
+("AFO / Orçamento Público","LRF: limites das despesas e despesa com pessoal","A"),
+("AFO / Orçamento Público","LRF: endividamento, RGF, RREO e transparência","A"),
+("AFO / Orçamento Público","CF/88, Decreto 93.872/86, MTO 2022 e MDF 12ª edição","B"),
+("Português","Compreensão e interpretação: informações literais e inferências","A"),
+("Português","Articulação textual: referenciação, nexos, operadores, coesão e coerência","A"),
+("Português","Significação contextual de palavras e expressões","B"),
+("Português","Crase","A"),
+("Português","Tempos e modos verbais","B"),
+("Português","Emprego e colocação de pronomes","B"),
+("Português","Regência nominal e verbal","A"),
+("Português","Concordância verbal e nominal","A"),
+("Português","Pontuação","A"),
+("Português","Variação linguística e norma linguística","B"),
+("Direito Constitucional","Conceito, aplicabilidade e interpretação das normas constitucionais","B"),
+("Direito Constitucional","Princípios fundamentais","B"),
+("Direito Constitucional","Direitos e garantias fundamentais","A"),
+("Direito Constitucional","Organização político-administrativa do Estado","B"),
+("Direito Constitucional","Administração Pública e servidores públicos","A"),
+("Direito Constitucional","Organização dos Poderes","B"),
+("Direito Constitucional","Poder Legislativo e processo legislativo","B"),
+("Direito Constitucional","Poder Executivo: atribuições e responsabilidades","C"),
+("Direito Constitucional","Poder Judiciário, STF, CNJ e STJ","A"),
+("Direito Constitucional","Tribunais e Juízes do Trabalho e CSJT","A"),
+("Direito Administrativo","Princípios básicos da Administração Pública","A"),
+("Direito Administrativo","Organização administrativa: direta, indireta, centralização e descentralização","A"),
+("Direito Administrativo","Autarquias, fundações, empresas públicas e sociedades de economia mista","B"),
+("Direito Administrativo","Poderes administrativos","A"),
+("Direito Administrativo","Servidores: cargo, emprego e função públicos","B"),
+("Direito Administrativo","Atos administrativos: conceito, requisitos e atributos","A"),
+("Direito Administrativo","Anulação, revogação, convalidação, discricionariedade e vinculação","A"),
+("Direito Administrativo","Lei 8.112/90: provimento, vacância, remoção, redistribuição e substituição","A"),
+("Direito Administrativo","Lei 8.112/90: direitos, vantagens, férias, licenças e afastamentos","A"),
+("Direito Administrativo","Lei 8.112/90: regime disciplinar e penalidades","A"),
+("Direito Administrativo","Processo administrativo disciplinar","B"),
+("Direito Administrativo","Lei 14.133/2021 — Licitações e Contratos","A"),
+("Direito Administrativo","Responsabilidade extracontratual do Estado","B"),
+("Direito Administrativo","Lei 9.784/1999 — Processo administrativo","A"),
+("Direito Administrativo","Lei 8.429/1992 — Improbidade Administrativa","A"),
+("Legislação","LGPD — Lei 13.709/2018","A"),
+("Legislação","Lei Brasileira de Inclusão — Lei 13.146/2015","B"),
+("Legislação","Regimento Interno do TRT da 3ª Região","A"),
+("Legislação","Código de Ética do TRT3","B"),
+("Direito do Trabalho","Princípios, fontes e direitos constitucionais dos trabalhadores","B"),
+("Direito do Trabalho","Relação de trabalho e relação de emprego; sujeitos do contrato","B"),
+("Direito do Trabalho","Contrato individual, alteração, suspensão e interrupção","B"),
+("Direito do Trabalho","Rescisão, aviso prévio, estabilidade e garantias provisórias","A"),
+("Direito do Trabalho","Jornada, descansos, trabalho noturno e horas extras","A"),
+("Direito do Trabalho","Férias, salário, remuneração e 13º salário","A"),
+("Direito do Trabalho","Equiparação salarial, FGTS, prescrição e decadência","B"),
+("Direito do Trabalho","Insalubridade, periculosidade e segurança do trabalho","B"),
+("Direito do Trabalho","Negociação coletiva, greve e teletrabalho","B"),
+("Direito do Trabalho","Dano moral, acidentes e responsabilidade civil trabalhista","B"),
+("Direito Processual do Trabalho","Justiça do Trabalho: organização e competência","A"),
+("Direito Processual do Trabalho","Princípios, atos, termos e prazos processuais","B"),
+("Direito Processual do Trabalho","Partes, procuradores, assistência judiciária e honorários","B"),
+("Direito Processual do Trabalho","Audiências, revelia, confissão e provas","A"),
+("Direito Processual do Trabalho","Dissídios individuais e procedimentos ordinário e sumaríssimo","A"),
+("Direito Processual do Trabalho","Sentença, coisa julgada e jurisdição voluntária","B"),
+("Direito Processual do Trabalho","Liquidação e execução trabalhista","A"),
+("Direito Processual do Trabalho","Penhora, embargos, impugnações e embargos de terceiros","B"),
+("Direito Processual do Trabalho","Recursos no processo do trabalho","A"),
+("Direito Processual do Trabalho","PJe, Reforma Trabalhista e jurisprudência do TST","B"),
+("Contabilidade de Custos","Conceitos: custos, despesas, investimentos, ganhos, perdas e gastos","B"),
+("Contabilidade de Custos","Classificação: fixos, variáveis, diretos, indiretos, controláveis e não controláveis","B"),
+("Contabilidade de Custos","Custos primários, custos de transformação e objeto de custeio","B"),
+("Contabilidade de Custos","Custeio por absorção","A"),
+("Contabilidade de Custos","Custeio variável","A"),
+("Contabilidade de Custos","Custeio ABC e Custeio Pleno (RKW)","B"),
+("Contabilidade de Custos","Custo por produto, processo e atividade","B"),
+("Matemática Financeira","Juros simples","B"),
+("Matemática Financeira","Juros compostos","B"),
+("Matemática Financeira","Taxas nominal, efetiva, real, equivalente e aparente","B"),
+("Matemática Financeira","Desconto: valor presente, valor futuro e montante","B"),
+("Informática","LibreOffice e Windows 10: arquivos, pastas, configurações e permissões","C"),
+("Informática","Word 2016: edição, formatação, tabelas, impressão e recursos","C"),
+("Informática","Excel 2016: fórmulas, funções, gráficos, classificação e dados externos","B"),
+("Informática","PowerPoint 2016 e Outlook 2016","C"),
+("Informática","Chrome e navegação na Internet","C"),
+("Informática","Segurança: vírus, malware, phishing, ransomware, spam e ameaças","B"),
+]
+
+def ordered_plan():
+    queues={}
+    for item in PLAN:
+        queues.setdefault(item[0],[]).append(item)
+    rotation=[
+        "Contabilidade Geral","Contabilidade Pública",
+        "Português","Direito Constitucional",
+        "AFO / Orçamento Público","Contabilidade Geral",
+        "Contabilidade Pública","Direito Administrativo",
+        "Português","Direito do Trabalho",
+        "Contabilidade Geral","Direito Processual do Trabalho",
+        "Contabilidade Geral","AFO / Orçamento Público",
+        "Contabilidade Pública","Direito Administrativo",
+        "Português","Legislação",
+        "Contabilidade Geral","Contabilidade de Custos",
+        "Contabilidade Pública","Matemática Financeira",
+        "Direito Constitucional","Informática",
+    ]
+    out=[]
+    while any(queues.values()):
+        progressed=False
+        for disc in rotation:
+            if queues.get(disc):
+                out.append(queues[disc].pop(0)); progressed=True
+            if not any(queues.values()): break
+        if not progressed: break
+    # Any remaining subjects not represented in the cycle are appended, still respecting edital order.
+    for disc,q in queues.items(): out.extend(q)
+    return out
+
+def seed_plan(c):
+    count = c.execute("SELECT COUNT(*) FROM study_topics").fetchone()[0]
+    if count:
+        return
+    for i,(disc,topic,priority) in enumerate(ordered_plan(),1):
+        c.execute("INSERT INTO study_topics(order_no,discipline,topic,priority,estimated_minutes,status) VALUES(?,?,?,?,?,?)",
+                  (i,disc,topic,priority,60,"pending"))
 
 def get_setting(key):
     c = conn()
@@ -87,7 +292,7 @@ def home():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "app": "Professor MD", "version": "4.2"}
+    return {"status": "ok", "app": "Professor MD", "version": "4.3"}
 
 
 @app.get("/api/status")
@@ -459,6 +664,71 @@ def error(discipline: str = Form(""), topic: str = Form(""), question: str = For
     return {"ok": True}
 
 
+@app.get("/api/plan")
+def plan():
+    c=conn()
+    rows=c.execute("SELECT * FROM study_topics ORDER BY order_no").fetchall()
+    c.close()
+    items=[dict(x) for x in rows]
+    first_pending=next((x["order_no"] for x in items if x["status"]!="completed"), None)
+    for x in items:
+        x["week"] = ((int(x["order_no"])-1)//12)+1
+        x["day"] = ((int(x["order_no"])-1)//2)%6+1
+        x["block"] = 1 if int(x["order_no"])%2 else 2
+        if x["status"]=="pending" and first_pending is not None and x["order_no"]==first_pending:
+            x["status"]="current"
+    total=len(items); completed=sum(1 for x in items if x["status"]=="completed")
+    pct=round(completed/total*100,1) if total else 0
+    next5=[x for x in items if x["status"] in ("current","pending")][:5]
+    groups=[]
+    seen={}
+    for x in items:
+        d=x["discipline"]
+        if d not in seen:
+            seen[d]=[]; groups.append({"discipline":d,"items":seen[d]})
+        seen[d].append(x)
+    for g in groups:
+        done=sum(1 for x in g["items"] if x["status"]=="completed")
+        g["completed"]=done; g["total"]=len(g["items"]); g["pct"]=round(done/len(g["items"])*100,1) if g["items"] else 0
+    return {"items":items,"groups":groups,"total":total,"completed":completed,"pct":pct,"next5":next5}
+
+@app.post("/api/plan/complete")
+def complete_topic(topic_id:int=Form(...), minutes:int=Form(60), questions:int=Form(0), correct:int=Form(0), notes:str=Form("")):
+    c=conn(); row=c.execute("SELECT * FROM study_topics WHERE id=?",(topic_id,)).fetchone()
+    if not row:
+        c.close(); return JSONResponse({"ok":False,"error":"Assunto não encontrado."},status_code=404)
+    now=datetime.now().isoformat()
+    c.execute("UPDATE study_topics SET status='completed', completed_at=?, notes=? WHERE id=?",(now,notes,topic_id))
+    # Optional session entry so the progress panel and topic completion stay aligned.
+    score=round(correct/questions*100,1) if questions else 0
+    c.execute("INSERT INTO sessions(discipline,topic,minutes,questions,correct,score,notes,created_at) VALUES(?,?,?,?,?,?,?,?)",
+              (row["discipline"],row["topic"],minutes,questions,correct,score,notes,now))
+    # Automatic review checkpoints for a completed topic.
+    for days,kind in ((0,"R0"),(1,"R1"),(7,"R7"),(30,"R30")):
+        rd=(date.today()+timedelta(days=days)).isoformat()
+        c.execute("INSERT INTO reviews(topic_id,discipline,topic,review_date,review_type,completed) VALUES(?,?,?,?,?,0)",
+                  (topic_id,row["discipline"],row["topic"],rd,kind))
+    c.commit(); c.close()
+    return {"ok":True,"message":"Assunto concluído e próximas revisões programadas.","score":score}
+
+@app.post("/api/plan/reset")
+def reset_plan():
+    c=conn(); c.execute("UPDATE study_topics SET status='pending',completed_at=NULL,notes=''" ); c.commit(); c.close()
+    return {"ok":True}
+
+@app.get("/api/reviews")
+def reviews():
+    c=conn(); rows=c.execute("SELECT * FROM reviews WHERE completed=0 ORDER BY review_date,id LIMIT 100").fetchall(); c.close()
+    return {"items":[dict(x) for x in rows]}
+
+@app.post("/api/reviews/complete")
+def complete_review(review_id:int=Form(...)):
+    c=conn(); row=c.execute("SELECT * FROM reviews WHERE id=?",(review_id,)).fetchone()
+    if not row:
+        c.close(); return JSONResponse({"ok":False,"error":"Revisão não encontrada."},status_code=404)
+    c.execute("UPDATE reviews SET completed=1,completed_at=? WHERE id=?",(datetime.now().isoformat(),review_id)); c.commit(); c.close()
+    return {"ok":True}
+
 @app.get("/api/dashboard")
 def dashboard():
     c = conn()
@@ -470,39 +740,30 @@ def dashboard():
     q = sum(int(x["questions"] or 0) for x in s)
     correct = sum(int(x["correct"] or 0) for x in s)
     score = round(correct / q * 100, 1) if q else 0
+    c2=conn(); total_topics=c2.execute("SELECT COUNT(*) FROM study_topics").fetchone()[0]; done_topics=c2.execute("SELECT COUNT(*) FROM study_topics WHERE status='completed'").fetchone()[0]; c2.close()
+    plan_pct=round(done_topics/total_topics*100,1) if total_topics else 0
     return {"hours": round(total_min / 60, 1), "questions": q, "correct": correct,
             "score": score, "weak_topics": len(set(x["topic"] for x in e if x["topic"])),
-            "materials": [dict(x) for x in m], "errors": [dict(x) for x in e]}
+            "materials": [dict(x) for x in m], "errors": [dict(x) for x in e],
+            "plan_total": total_topics, "plan_completed": done_topics, "plan_pct": plan_pct}
 
 
 @app.get("/api/today")
 def today():
-    c = conn()
-    mats = c.execute("SELECT filename,subject,topic,processing_status FROM materials ORDER BY id DESC LIMIT 10").fetchall()
-    errors = c.execute("SELECT discipline,topic,review_date FROM errors WHERE review_date<=? ORDER BY id DESC LIMIT 5",
-                       (date.today().isoformat(),)).fetchall()
+    c=conn()
+    mats=c.execute("SELECT id,filename,subject,topic,processing_status FROM materials ORDER BY id DESC LIMIT 20").fetchall()
+    rows=c.execute("SELECT * FROM study_topics WHERE status!='completed' ORDER BY order_no LIMIT 2").fetchall()
+    reviews_due=c.execute("SELECT * FROM reviews WHERE completed=0 AND review_date<=? ORDER BY review_date,id LIMIT 5",(date.today().isoformat(),)).fetchall()
     c.close()
-    blocks = [
-        {"discipline": "Contabilidade Geral", "topic": "Ativo Imobilizado",
-         "pages": "Definidas pelo PDF processado", "theory": 40, "reverse": 20},
-        {"discipline": "Contabilidade Pública", "topic": "CASP / MCASP",
-         "pages": "Definidas pelo PDF processado", "theory": 40, "reverse": 20}
-    ]
-    ready_mats = [m for m in mats if m["processing_status"] in ("ready", "processing", "queued")]
-    if ready_mats:
-        for i, m in enumerate(ready_mats[:2]):
-            if m["subject"] or m["topic"]:
-                blocks[i]["discipline"] = m["subject"] or blocks[i]["discipline"]
-                blocks[i]["topic"] = m["topic"] or blocks[i]["topic"]
-                blocks[i]["material"] = m["filename"]
-    return {"date": date.today().strftime("%d/%m/%Y"), "blocks": blocks,
-            "reviews": [dict(x) for x in errors]}
-
-
-@app.get("/api/reviews")
-def reviews():
-    c = conn(); rows = c.execute("SELECT * FROM errors ORDER BY review_date ASC LIMIT 50").fetchall(); c.close()
-    return {"items": [dict(x) for x in rows]}
+    blocks=[]
+    for r in rows:
+        material=None
+        for m in mats:
+            mt=(m["topic"] or "").strip().lower(); rt=r["topic"].lower()
+            if m["processing_status"]=="ready" and mt and (mt in rt or rt in mt):
+                material=m["filename"]; break
+        blocks.append({"id":r["id"],"discipline":r["discipline"],"topic":r["topic"],"pages":"Consulte o PDF associado; o mapeamento exato de páginas será adicionado em versão futura","theory":40,"reverse":20,"priority":r["priority"],"material":material})
+    return {"date":date.today().strftime("%d/%m/%Y"),"blocks":blocks,"reviews":[dict(x) for x in reviews_due]}
 
 
 @app.get("/api/materials")
