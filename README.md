@@ -1,4 +1,4 @@
-# Professor MD 4.1
+# Professor MD 4.2
 
 Versão corrigida do Professor MD com envio de PDF mais robusto para Render.
 
@@ -24,3 +24,10 @@ Environment Variables:
 - Limite de upload desta versão: 25 MB por PDF.
 - SQLite e a pasta `uploads/` continuam dependentes do filesystem do serviço. Para produção com persistência após reinícios/deploys, use banco/armazenamento persistente.
 - O processamento em segundo plano é intencionalmente simples e adequado ao protótipo no Render; para grande volume, migrar para uma fila de jobs é o próximo passo.
+
+
+## 4.2 — novos geradores
+- Gerador de mapa mental em PDF baseado no PDF selecionado.
+- Gerador de 18 flashcards em PDF, com frente e resposta em páginas alternadas.
+- Conteúdo dos geradores é solicitado via File Search e deve permanecer fiel ao PDF selecionado.
+- PDFs gerados ficam disponíveis em `/api/generated/...`.

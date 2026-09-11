@@ -1,7 +1,7 @@
 
 <!doctype html><html lang="pt-BR"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Professor MD 4.1</title>
+<title>Professor MD 4.2</title>
 <style>
 :root{--navy:#0b2a55;--blue:#1d63b8;--bg:#f3f6fb;--text:#14233d;--muted:#68758a;--line:#dce4ef;--green:#14a66b;--red:#e44d5d;--purple:#7357d9}
 *{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Arial;background:var(--bg);color:var(--text)}
@@ -39,7 +39,7 @@ textarea,input,select{width:100%;padding:11px;border:1px solid #cfd9e7;border-ra
 <textarea id="question" rows="3" placeholder="Digite sua pergunta..."></textarea><div class="actions"><button class="btn" onclick="ask()">Enviar</button><button class="btn light" onclick="voice()">🎙️ Falar</button></div></section>
 </div>
 <div class="grid3">
-<section class="card"><h3>📄 Meus PDFs</h3><div id="materials" class="small">Nenhum PDF.</div><hr><input id="pdf" type="file" accept=".pdf"><input id="subject" placeholder="Disciplina (ex.: Contabilidade Geral)"><input id="topic" placeholder="Assunto"><button id="uploadBtn" class="btn" onclick="upload()">Enviar novo PDF</button><p id="up" class="sub"></p></section>
+<section class="card"><h3>📄 Meus PDFs</h3><div id="materials" class="small">Nenhum PDF.</div><hr><input id="pdf" type="file" accept=".pdf"><input id="subject" placeholder="Disciplina (ex.: Contabilidade Geral)"><input id="topic" placeholder="Assunto"><button id="uploadBtn" class="btn" onclick="upload()">Enviar novo PDF</button><p id="up" class="sub"></p><hr><h4>🧠 Gerar material de revisão</h4><p class="sub">Escolha um PDF processado e gere um arquivo PDF pronto para estudar.</p><select id="genMaterial"></select><div class="actions"><button class="btn light" onclick="generatePDF('mindmap')">🧠 Mapa mental PDF</button><button class="btn light" onclick="generatePDF('flashcards')">🃏 Flashcards PDF</button></div><p id="genStatus" class="sub"></p></section>
 <section class="card"><h3>📝 Registrar estudo</h3><input id="disc" value="Contabilidade Geral"><input id="top" value="Ativo Imobilizado"><input id="mins" type="number" value="60" placeholder="Minutos"><input id="nq" type="number" value="10" placeholder="Questões resolvidas"><input id="nc" type="number" value="8" placeholder="Acertos"><textarea id="notes" rows="2" placeholder="Observações / pontos fracos"></textarea><button class="btn" onclick="save()">Salvar sessão</button></section>
 <section class="card"><h3>📊 Seu progresso</h3><div class="progress" id="bigscore">0%</div><p class="sub">Média geral</p><div class="list small">⏱️ <span id="ph">0h</span> estudadas<br>📝 <span id="pq">0</span> questões<br>✅ <span id="pc">0</span> acertos<br>⚠️ <span id="pe">0</span> assuntos fracos</div><hr><b>Próximas revisões</b><div class="small">R0 — Hoje<br>R1 — Amanhã<br>R7 — +7 dias<br>R30 — +30 dias</div></section>
 </div>
@@ -58,6 +58,8 @@ async function load(){
  $('plans').innerHTML=t.blocks.map((b,i)=>`<div class="plan"><span class="num">${i+1}</span><b>${esc(b.discipline)}</b><br><span class="tag">${esc(b.topic)}</span> ${b.material?'<span class="tag">📄 '+esc(b.material)+'</span>':''}<p class="small">⏱️ ${b.theory} min teoria &nbsp; + &nbsp; 🎯 ${b.reverse} min Engenharia Reversa<br>📖 ${esc(b.pages)}</p><div class="actions"><button class="btn light" onclick="quick('Me ensine o tópico ${esc(b.topic)} usando meu PDF.')">Ver material</button><button class="btn green" onclick="quick('Comece minha sessão de ${esc(b.topic)} agora. Faça a aula em etapas.')">▶ Iniciar sessão</button></div></div>`).join('');
  $('reviews').innerHTML=t.reviews.length?t.reviews.map(x=>'🔔 '+esc(x.topic)+' — '+esc(x.review_date)).join('<br>'):'Nenhuma revisão pendente.';
  $('materials').innerHTML=m.items.length?m.items.slice(0,6).map(x=>'📄 <b>'+esc(x.filename)+'</b><br><span class="sub">'+esc(x.subject||'')+' • '+esc(x.topic||'')+'</span><br>'+materialStatusLabel(x)+'<hr>').join(''):'Nenhum PDF enviado.';
+ const ready=m.items.filter(x=>x.processing_status==='ready');
+ $('genMaterial').innerHTML=ready.length?ready.map(x=>`<option value="${x.id}">${esc(x.filename)}${x.topic?' — '+esc(x.topic):''}</option>`).join(''):'<option value="">Nenhum PDF pronto</option>';
  $('errors').innerHTML=d.errors.length?d.errors.slice(0,8).map(x=>'⚠️ <b>'+esc(x.topic)+'</b> — revisão '+esc(x.review_date||'a definir')).join('<br>'):'Nenhum erro registrado ainda.';
  }catch(e){$('online').textContent='● Sistema: verifique o servidor';console.log(e)}
 }
@@ -121,6 +123,17 @@ async function upload(){
     $('up').textContent='❌ Erro no envio: '+e.message;
     $('uploadBtn').disabled=false;$('uploadBtn').textContent='Enviar novo PDF';
   }
+}
+async function generatePDF(kind){
+  const id=$('genMaterial').value;
+  if(!id)return alert('Primeiro envie e aguarde um PDF ficar como “Pronto para perguntas”.');
+  const label=kind==='mindmap'?'mapa mental':'flashcards';
+  $('genStatus').textContent='🤖 Gerando '+label+' com base no PDF...';
+  try{
+    const fd=new URLSearchParams({material_id:id});
+    const d=await api('/api/generate/'+kind,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:fd});
+    $('genStatus').innerHTML='✅ '+esc(d.filename)+' — <a href="'+d.url+'" target="_blank">Abrir PDF</a>'+(d.count?' • '+d.count+' flashcards':'');
+  }catch(e){$('genStatus').textContent='❌ Não foi possível gerar: '+e.message;}
 }
 async function save(){let fd=new URLSearchParams({discipline:$('disc').value,topic:$('top').value,minutes:$('mins').value,questions:$('nq').value,correct:$('nc').value,notes:$('notes').value});try{let d=await api('/api/session',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:fd});alert('Sessão salva! Aproveitamento: '+d.score+'%');load()}catch(e){alert(e.message)}}
 async function saveError(){let fd=new URLSearchParams({discipline:$('edisc').value,topic:$('etopic').value,mistake:$('emistake').value,action:$('eaction').value,review_date:$('edate').value});try{await api('/api/error',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:fd});alert('Erro registrado e enviado para revisão.');load()}catch(e){alert(e.message)}}

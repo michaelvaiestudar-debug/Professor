@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+professor_md.db
+uploads/*
+generated/*
