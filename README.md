@@ -1,16 +1,26 @@
-# Professor MD 4.0
+# Professor MD 4.1
 
-Versão visual inspirada no painel aprovado pelo usuário.
-Inclui dashboard responsivo, plano diário, tutor IA, voz, PDFs, registro de estudo,
-desempenho, revisões e caderno de erros.
+Versão corrigida do Professor MD com envio de PDF mais robusto para Render.
 
-Render:
-Build: pip install -r requirements.txt
-Start: uvicorn app:app --host 0.0.0.0 --port $PORT
+## Principal correção
+O upload agora é dividido em duas etapas:
+1. O servidor recebe e salva o PDF rapidamente e responde ao navegador.
+2. O processamento na OpenAI/File Search acontece em segundo plano.
 
-Environment:
-OPENAI_API_KEY = sua chave
-OPENAI_MODEL = gpt-5.6-luna
-OPENAI_VECTOR_STORE_ID = opcional; se vazio, o primeiro upload cria um vector store.
+A interface mostra `Recebido`, `Processando`, `Pronto` ou `Erro` e consulta o status automaticamente. Isso evita que a tela fique presa em `Processando PDF...` enquanto a API da OpenAI trabalha.
 
-A aplicação mantém a chave apenas no servidor.
+## Render
+Start Command:
+```bash
+uvicorn app:app --host 0.0.0.0 --port $PORT
+```
+
+Environment Variables:
+- `OPENAI_API_KEY` = sua chave da OpenAI (não publique no GitHub)
+- `OPENAI_MODEL` = `gpt-5.6-luna`
+- `OPENAI_VECTOR_STORE_ID` = opcional; se vazio, o primeiro PDF cria um vector store automaticamente
+
+## Observações
+- Limite de upload desta versão: 25 MB por PDF.
+- SQLite e a pasta `uploads/` continuam dependentes do filesystem do serviço. Para produção com persistência após reinícios/deploys, use banco/armazenamento persistente.
+- O processamento em segundo plano é intencionalmente simples e adequado ao protótipo no Render; para grande volume, migrar para uma fila de jobs é o próximo passo.
