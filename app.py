@@ -1,4 +1,4 @@
-# Professor MD 4.4
+# Professor MD 4.4.2
 from pathlib import Path
 import os, sqlite3, json, threading, time
 from datetime import datetime, date, timedelta
@@ -81,9 +81,20 @@ def supabase_list(prefix="pdfs/"):
     data,_=_sb_request("POST", f"/storage/v1/object/list/{urllib.parse.quote(SUPABASE_BUCKET, safe='')}", body, "application/json")
     return json.loads(data.decode("utf-8"))
 
+def storage_safe_filename(filename):
+    # Supabase Storage is stricter with object keys. Keep the original
+    # filename for display, but use an ASCII-safe key for Storage.
+    import unicodedata
+    base = unicodedata.normalize("NFKD", filename).encode("ascii", "ignore").decode("ascii")
+    base = re.sub(r"[^A-Za-z0-9._,\-!*$@=;:+?()' ]+", "_", base)
+    base = re.sub(r"\s+", "_", base).strip("._")
+    if not base.lower().endswith(".pdf"):
+        base += ".pdf"
+    return base[:180]
+
 def storage_path_for(filename, data):
     digest=hashlib.sha256(data).hexdigest()[:20]
-    return f"pdfs/{digest}_{filename}"
+    return f"pdfs/{digest}_{storage_safe_filename(filename)}"
 
 def metadata_path_for(storage_path):
     name=storage_path.split("/",1)[1]
