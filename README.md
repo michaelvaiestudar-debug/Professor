@@ -1,4 +1,4 @@
-# Professor MD 4.4 — Biblioteca Permanente + Cronograma Organizado
+# Professor MD 4.4.1 — Biblioteca Permanente + Cronograma Organizado
 
 Esta versão mantém os recursos do Professor MD 4.3 e adiciona duas melhorias importantes:
 
@@ -73,3 +73,8 @@ uvicorn app:app --host 0.0.0.0 --port $PORT
 ```
 
 Após configurar as variáveis, faça o deploy da versão 4.4.
+
+
+## Correção 4.4.1
+- Uploads para o Supabase usam `upsert` para que uma tentativa repetida do mesmo PDF não falhe apenas porque o arquivo já existe.
+- Erros do Supabase agora mostram o corpo da resposta para facilitar o diagnóstico de novos problemas de upload.

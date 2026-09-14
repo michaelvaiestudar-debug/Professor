@@ -26,7 +26,7 @@ VECTOR_STORE_ID = os.getenv("OPENAI_VECTOR_STORE_ID", "").strip()
 MAX_PDF_BYTES = 25 * 1024 * 1024
 VS_LOCK = threading.Lock()
 
-app = FastAPI(title="Professor MD", version="4.4")
+app = FastAPI(title="Professor MD", version="4.4.1")
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_credentials=True,
     allow_methods=["*"], allow_headers=["*"]
@@ -48,8 +48,20 @@ def _sb_request(method, path, data=None, content_type=None):
     if content_type:
         headers["Content-Type"] = content_type
     req = urllib.request.Request(url, data=data, headers=headers, method=method)
-    with urllib.request.urlopen(req, timeout=45) as resp:
-        return resp.read(), resp.headers.get("content-type", "")
+    try:
+        with urllib.request.urlopen(req, timeout=45) as resp:
+            return resp.read(), resp.headers.get("content-type", "")
+    except urllib.error.HTTPError as e:
+        # Supabase returns the useful reason in the response body. Expose it
+        # instead of only showing the generic HTTP status to the user.
+        try:
+            body = e.read().decode("utf-8", errors="replace")
+        except Exception:
+            body = ""
+        detail = body[:1000].strip()
+        if detail:
+            raise RuntimeError(f"Supabase HTTP {e.code}: {detail}") from e
+        raise RuntimeError(f"Supabase HTTP {e.code}: {e.reason}") from e
 
 def supabase_upload(path, data, content_type="application/pdf", upsert=False):
     encoded = "/".join(urllib.parse.quote(x, safe="") for x in path.split("/"))
@@ -489,7 +501,7 @@ async def upload(file: UploadFile = File(...), subject: str = Form(""), topic: s
     try:
         if supabase_configured():
             storage_path = storage_path_for(name, data)
-            supabase_upload(storage_path, data, "application/pdf", upsert=False)
+            supabase_upload(storage_path, data, "application/pdf", upsert=True)
             meta = {"filename": name, "subject": subject, "topic": topic, "created_at": datetime.now().isoformat(),
                     "size_bytes": len(data), "sha256": digest, "storage_path": storage_path}
             supabase_upload(metadata_path_for(storage_path), json.dumps(meta, ensure_ascii=False).encode("utf-8"), "application/json", upsert=True)
