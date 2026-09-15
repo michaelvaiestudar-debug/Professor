@@ -372,7 +372,7 @@ def home():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "app": "Professor MD", "version": "4.5"}
+    return {"status": "ok", "app": "Professor MD", "version": "4.9"}
 
 
 @app.get("/api/status")
@@ -509,7 +509,7 @@ def process_pdf_background(material_id, name, data):
 
         # Attach the file and return immediately. The vector-store service can
         # continue processing it after this call; the UI will show the state.
-        client.vector_stores.files.create(vector_store_id=vs, file_id=oid)
+        client.vector_stores.files.create(vector_store_id=vs, file_id=oid, attributes={"material_id": str(material_id), "filename": name[:512]})
         # Do not mark the material ready until vector-store indexing is complete.
         wait_vector_file_ready(client, vs, oid)
         update_material(material_id, processing_status="ready", processing_error="")
@@ -635,7 +635,7 @@ def _source_prompt(material_id, kind):
         instruction = f"""Você está criando material de revisão EXCLUSIVAMENTE a partir do arquivo PDF anexado, chamado \"{filename}\".
 Disciplina: {subject}. Assunto informado: {topic}.
 NÃO use conhecimento externo, outros arquivos ou memória geral para completar lacunas.
-Crie exatamente 15 flashcards.
+Crie exatamente 12 flashcards.
 REGRA DE PRECISÃO: cada pergunta e cada resposta precisam estar claramente sustentadas pelo PDF. Não acrescente exceções, classificações, datas, leis, regras ou afirmações que não estejam no arquivo. Se houver dúvida sobre um detalhe, prefira não usá-lo.
 Não transforme uma inferência sua em fato do PDF.
 Use aproximadamente 5 básicos, 5 intermediários e 5 no nível \"fumarc\". O rótulo FUMARC significa apenas dificuldade/estilo, não questão oficial.
@@ -660,19 +660,40 @@ Retorne SOMENTE JSON válido neste formato: {json.dumps(schema, ensure_ascii=Fal
     return row, instruction
 
 
-def _response_with_file(client, row, instruction, json_mode=True):
-    content = [
-        {"type": "input_file", "file_id": row["openai_file_id"]},
-        {"type": "input_text", "text": instruction},
-    ]
+def _response_with_file(client, row, instruction, json_mode=True, max_results=8):
+    # Do not send the entire PDF as input_file for generation. Large PDFs can
+    # consume the organization's tokens-per-minute budget even when the final
+    # answer is short. Use File Search to retrieve only relevant chunks from
+    # the selected material. The vector-store file is tagged with material_id
+    # when processed, so one PDF is isolated from the others.
+    vs = row["vector_store_id"] or current_vs()
+    if not vs:
+        raise RuntimeError("O PDF ainda não está conectado ao mecanismo de busca da IA. Processe o PDF novamente.")
+    tool = {
+        "type": "file_search",
+        "vector_store_ids": [vs],
+        "max_num_results": max_results,
+        "filters": {
+            "type": "eq",
+            "key": "material_id",
+            "value": str(row["id"]),
+        },
+    }
     kwargs = {
         "model": MODEL,
-        "instructions": "Você é o Professor MD. Trabalhe somente com o PDF anexado. Responda em português do Brasil.",
-        "input": [{"role": "user", "content": content}],
+        "instructions": "Você é o Professor MD. Use EXCLUSIVAMENTE o conteúdo recuperado do PDF selecionado. Responda em português do Brasil.",
+        "input": instruction + "\n\nIMPORTANTE: use a ferramenta de busca no PDF selecionado antes de responder.",
+        "tools": [tool],
     }
     if json_mode:
         kwargs["text"] = {"format": {"type": "json_object"}}
-    return client.responses.create(**kwargs)
+    try:
+        return client.responses.create(**kwargs)
+    except Exception as e:
+        msg = str(e)
+        if "rate_limit_exceeded" in msg or "Rate limit" in msg or "429" in msg:
+            raise RuntimeError("A OpenAI atingiu temporariamente o limite de tokens por minuto. O Professor MD foi ajustado para usar apenas trechos do PDF, em vez de enviar o PDF inteiro. Aguarde cerca de 1 minuto e tente novamente.") from e
+        raise
 
 
 def _ai_json(material_id, kind):
@@ -681,14 +702,12 @@ def _ai_json(material_id, kind):
         raise RuntimeError("Configure OPENAI_API_KEY no Render antes de gerar o material.")
     row, instruction = _source_prompt(material_id, kind)
     client = OpenAI(api_key=key, timeout=120.0, max_retries=2)
-    r = _response_with_file(client, row, instruction, True)
+    r = _response_with_file(client, row, instruction, True, max_results=10 if kind == "mindmap" else 6)
     raw = _clean_json_text(r.output_text)
     try:
         data = json.loads(raw)
     except Exception as e:
         raise RuntimeError("A IA não retornou o formato estruturado esperado. Tente gerar novamente.") from e
-    if kind == "flashcards":
-        data = _audit_flashcards(client, row, data)
     return row, data
 
 
@@ -737,7 +756,7 @@ Use pegadinhas apenas quando houver distinções realmente presentes no PDF.
 Não são questões oficiais da FUMARC.
 Retorne SOMENTE JSON neste formato: {json.dumps(schema, ensure_ascii=False)}"""
     client=OpenAI(api_key=key, timeout=120.0, max_retries=2)
-    r=_response_with_file(client,row,prompt,True)
+    r=_response_with_file(client,row,prompt,True,max_results=6)
     try: data=json.loads(_clean_json_text(r.output_text))
     except Exception as e: raise RuntimeError("A IA não retornou questões em formato válido.") from e
     qs=data.get("questions") or []
@@ -1029,7 +1048,7 @@ Cada bloco deve ter: objetivo de uma frase; exatamente 3 pontos-chave; uma pergu
 Não tente resumir tudo em poucas frases: cubra os conceitos relevantes do PDF, mas em pequenas unidades.
 Retorne SOMENTE JSON: {json.dumps(schema,ensure_ascii=False)}"""
         client=OpenAI(api_key=key,timeout=120,max_retries=2)
-        r=_response_with_file(client,row,prompt,True)
+        r=_response_with_file(client,row,prompt,True,max_results=6)
         data=json.loads(_clean_json_text(r.output_text))
         blocks=data.get("microblocks") or []
         if not blocks: raise RuntimeError("Não foi possível montar os micro-blocos.")
