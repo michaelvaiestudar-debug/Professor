@@ -1,4 +1,4 @@
-# Professor MD 4.4.2
+# Professor MD 4.6
 from pathlib import Path
 import os, sqlite3, json, threading, time
 from datetime import datetime, date, timedelta
@@ -26,7 +26,7 @@ VECTOR_STORE_ID = os.getenv("OPENAI_VECTOR_STORE_ID", "").strip()
 MAX_PDF_BYTES = 25 * 1024 * 1024
 VS_LOCK = threading.Lock()
 
-app = FastAPI(title="Professor MD", version="4.5")
+app = FastAPI(title="Professor MD", version="4.6")
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_credentials=True,
     allow_methods=["*"], allow_headers=["*"]
@@ -662,7 +662,12 @@ Retorne SOMENTE JSON neste formato: {json.dumps(schema, ensure_ascii=False)}"""
     try:
         audited = json.loads(_clean_json_text(r.output_text))
         if audited.get("cards"):
-            data["cards"] = audited["cards"][:15]
+            clean=[]
+            for card in audited["cards"][:12]:
+                if str(card.get("question","")).strip() and str(card.get("answer","")).strip() and str(card.get("evidence","")).strip():
+                    clean.append(card)
+            if clean:
+                data["cards"] = clean
     except Exception:
         pass
     return data
@@ -755,57 +760,135 @@ def _register_pdf_fonts():
 
 
 def _build_mindmap_pdf(title, central, branches, traps, out_path):
+    """Build a readable, non-overlapping mind-map PDF.
+
+    The first page is a true overview (center + branch titles only). Every branch
+    then receives one or more detail pages. Text is wrapped and paginated rather
+    than truncated, so long concepts are never silently cut off.
+    """
     from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.units import mm
     from reportlab.pdfbase.pdfmetrics import stringWidth
-    W,H=landscape(A4); c=canvas.Canvas(str(out_path),pagesize=(W,H)); c.setTitle("Mapa Mental - "+title)
+
+    W,H=landscape(A4)
+    c=canvas.Canvas(str(out_path), pagesize=(W,H))
+    c.setTitle("Mapa Mental - "+str(title))
     regular,bold=_register_pdf_fonts()
+
     def wrap(text,font,size,maxw):
-        words=str(text or "").split(); lines=[]; cur=""
-        for w in words:
-            test=(cur+" "+w).strip()
-            if stringWidth(test,font,size)<=maxw: cur=test
+        words=str(text or "").split()
+        lines=[]; cur=""
+        for word in words:
+            # Break a single very long token instead of clipping it.
+            if stringWidth(word,font,size) > maxw:
+                if cur:
+                    lines.append(cur); cur=""
+                piece=""
+                for ch in word:
+                    test=piece+ch
+                    if stringWidth(test,font,size) <= maxw:
+                        piece=test
+                    else:
+                        if piece: lines.append(piece)
+                        piece=ch
+                if piece: lines.append(piece)
+                continue
+            test=(cur+" "+word).strip()
+            if stringWidth(test,font,size) <= maxw:
+                cur=test
             else:
                 if cur: lines.append(cur)
-                cur=w
+                cur=word
         if cur: lines.append(cur)
         return lines or [""]
-    def box(x,y,w,h,heading,items,hs=9,isize=7.5):
-        c.roundRect(x-w/2,y-h/2,w,h,5*mm,stroke=1,fill=0); c.setFont(bold,hs); c.drawCentredString(x,y+h/2-7*mm,str(heading)[:60])
-        yy=y+h/2-14*mm
-        for it in items:
-            for line in wrap("• "+str(it),regular,isize,w-8*mm)[:3]:
-                if yy<y-h/2+5*mm: break
-                c.setFont(regular,isize); c.drawString(x-w/2+4*mm,yy,line); yy-=4.2*mm
-            yy-=1*mm
-    c.setFont(bold,20); c.drawCentredString(W/2,H-15*mm,"MAPA MENTAL — "+str(title)[:70]); c.setFont(regular,8); c.drawCentredString(W/2,H-21*mm,"Professor MD • conteúdo organizado a partir do PDF selecionado")
-    cx,cy=W/2,H/2-2*mm; cw,ch=62*mm,30*mm; c.setLineWidth(1.5); c.roundRect(cx-cw/2,cy-ch/2,cw,ch,6*mm,stroke=1,fill=0)
-    center_lines=wrap(central,bold,13,cw-8*mm)[:3]; yy=cy+(len(center_lines)-1)*2.5*mm
-    for line in center_lines: c.setFont(bold,13); c.drawCentredString(cx,yy,line); yy-=5*mm
-    c.setFont(regular,8); c.drawCentredString(cx,cy-11*mm,"TEMA CENTRAL")
-    positions=[(W*.17,H*.72),(W*.17,H*.47),(W*.17,H*.22),(W*.39,H*.78),(W*.61,H*.78),(W*.83,H*.72),(W*.83,H*.47),(W*.83,H*.22)]
-    for i,b in enumerate(branches[:8]):
-        x,y=positions[i]; c.line(cx,cy,x,y); box(x,y,55*mm,34*mm,b.get("title","Ramo"),b.get("items",[])[:4])
+
+    # ---------- Overview page ----------
+    c.setFont(bold,20)
+    c.drawCentredString(W/2,H-15*mm,"MAPA MENTAL — "+str(title)[:100])
+    c.setFont(regular,8)
+    c.drawCentredString(W/2,H-21*mm,"Professor MD • visão geral • conteúdo organizado a partir do PDF selecionado")
+
+    cx,cy=W/2,H/2-2*mm
+    cw,ch=68*mm,34*mm
+    c.setLineWidth(1.5)
+    c.roundRect(cx-cw/2,cy-ch/2,cw,ch,6*mm,stroke=1,fill=0)
+    center_lines=wrap(central,bold,13,cw-10*mm)
+    yy=cy+(len(center_lines)-1)*2.5*mm
+    for line in center_lines:
+        c.setFont(bold,13); c.drawCentredString(cx,yy,line); yy-=5*mm
+    c.setFont(regular,8); c.drawCentredString(cx,cy-12*mm,"TEMA CENTRAL")
+
+    # 8 clean branch positions; only titles are placed here to avoid overlap.
+    positions=[(W*.17,H*.72),(W*.17,H*.48),(W*.17,H*.24),(W*.39,H*.78),
+               (W*.61,H*.78),(W*.83,H*.72),(W*.83,H*.48),(W*.83,H*.24)]
+    for i,b in enumerate(list(branches or [])[:8]):
+        x,y=positions[i]
+        title_lines=wrap(b.get("title","Ramo"),bold,9.5,42*mm)[:3]
+        bh=max(18*mm, (len(title_lines)*5+8)*mm)
+        bw=48*mm
+        # Connector terminates at the edge of the title box, not through text.
+        edge_x = x+bw/2 if x<cx else x-bw/2
+        c.line(cx,cy,edge_x,y)
+        c.roundRect(x-bw/2,y-bh/2,bw,bh,4*mm,stroke=1,fill=0)
+        ty=y+(len(title_lines)-1)*2.5*mm
+        for line in title_lines:
+            c.setFont(bold,9.5); c.drawCentredString(x,ty,line); ty-=5*mm
     c.showPage()
-    for start_idx in range(0,len(branches),2):
-        c.setFont(bold,18); c.drawString(15*mm,H-16*mm,"MAPA MENTAL — DETALHAMENTO"); c.setFont(regular,8); c.drawString(15*mm,H-22*mm,str(title)[:100])
-        for j,b in enumerate(branches[start_idx:start_idx+2]):
-            y=H-72*mm-j*88*mm; bw=W-30*mm; bh=70*mm; c.roundRect(15*mm,y-bh/2,bw,bh,6*mm,stroke=1,fill=0); c.setFont(bold,12); c.drawString(22*mm,y+bh/2-10*mm,str(b.get("title","Ramo"))[:100]); yy=y+bh/2-19*mm
-            for it in b.get("items",[]):
-                for line in wrap("• "+str(it),regular,9.5,bw-16*mm)[:4]:
-                    if yy<y-bh/2+7*mm: break
-                    c.setFont(regular,9.5); c.drawString(23*mm,yy,line); yy-=5*mm
-                yy-=1*mm
-        c.showPage()
-    traps=list(traps or []); idx=0
-    while idx<len(traps):
-        c.setFont(bold,18); c.drawString(15*mm,H-16*mm,"PEGADINHAS DE PROVA"); c.setFont(regular,8); c.drawString(15*mm,H-22*mm,"Somente pontos sustentados pelo PDF selecionado."); y=H-36*mm
-        for t in traps[idx:idx+7]:
-            lines=wrap(str(t),regular,10,W-38*mm); c.setFont(bold,10); c.drawString(18*mm,y,f"{idx+1}."); yy=y
-            for line in lines[:5]: c.setFont(regular,10); c.drawString(28*mm,yy,line); yy-=5.5*mm
-            y=yy-6*mm; idx+=1
-        c.showPage()
+
+    # ---------- Detail pages ----------
+    for idx,b in enumerate(list(branches or []),1):
+        items=list(b.get("items") or [])
+        # A branch can span multiple pages. Never slice its text.
+        page_no=1
+        item_index=0
+        while item_index < len(items) or page_no==1:
+            c.setFont(bold,18)
+            heading=f"MAPA MENTAL — {idx}. {str(b.get('title','Ramo'))}"
+            c.drawString(15*mm,H-16*mm,heading[:120])
+            c.setFont(regular,8)
+            c.drawString(15*mm,H-22*mm,f"Detalhamento • página {page_no}")
+
+            x=18*mm; y=H-34*mm; max_y=18*mm; maxw=W-36*mm
+            c.setLineWidth(0.8)
+            while item_index < len(items):
+                text="• "+str(items[item_index])
+                lines=wrap(text,regular,10.5,maxw-6*mm)
+                needed=(len(lines)*5.8*mm)+3*mm
+                if y-needed < max_y and item_index>0:
+                    break
+                c.roundRect(x,y-needed+2*mm,maxw,needed,3*mm,stroke=1,fill=0)
+                yy=y-4*mm
+                for line in lines:
+                    c.setFont(regular,10.5); c.drawString(x+4*mm,yy,line); yy-=5.8*mm
+                y-=needed+3*mm
+                item_index+=1
+            if not items:
+                c.setFont(regular,10.5); c.drawString(x+4*mm,y,"(Nenhum item detalhado foi retornado pelo PDF.)")
+            c.showPage()
+            page_no+=1
+            if item_index>=len(items): break
+
+    # ---------- Traps / exam attention ----------
+    traps=list(traps or [])
+    if traps:
+        tindex=0; page=1
+        while tindex<len(traps):
+            c.setFont(bold,18); c.drawString(15*mm,H-16*mm,"PEGADINHAS DE PROVA")
+            c.setFont(regular,8); c.drawString(15*mm,H-22*mm,"Somente pontos sustentados pelo PDF selecionado.")
+            y=H-34*mm
+            while tindex<len(traps):
+                lines=wrap(str(traps[tindex]),regular,10.5,W-48*mm)
+                needed=(len(lines)*5.8*mm)+8*mm
+                if y-needed<18*mm and y < H-34*mm: break
+                c.roundRect(18*mm,y-needed+2*mm,W-36*mm,needed,3*mm,stroke=1,fill=0)
+                yy=y-4*mm
+                c.setFont(bold,10.5); c.drawString(22*mm,yy,f"{tindex+1}.")
+                yy-=5.8*mm
+                for line in lines:
+                    c.setFont(regular,10.5); c.drawString(30*mm,yy,line); yy-=5.8*mm
+                y-=needed+3*mm; tindex+=1
+            c.showPage(); page+=1
     c.save()
 
 
@@ -881,6 +964,31 @@ Estruture: 1) conceito, 2) pontos que mais merecem atenção, 3) exemplo se houv
 Não invente conteúdo e não diga que é aula oficial da FUMARC."""
     client=OpenAI(api_key=key,timeout=120,max_retries=2); r=_response_with_file(client,chosen,prompt,False)
     return {"ok":True,"answer":r.output_text,"material":chosen["filename"],"topic":topic["topic"]}
+
+
+@app.post("/api/focus/plan")
+def focus_plan(material_id: int = Form(...)):
+    try:
+        key=os.getenv("OPENAI_API_KEY")
+        if not key: raise RuntimeError("Configure OPENAI_API_KEY no Render antes de usar o Modo Foco.")
+        c=conn(); row=c.execute("SELECT * FROM materials WHERE id=?",(material_id,)).fetchone(); c.close()
+        if not row or not row["openai_file_id"] or row["processing_status"] not in ("ready","archived"):
+            raise RuntimeError("Escolha um PDF processado e pronto para estudo.")
+        schema={"title":"","microblocks":[{"title":"","objective":"","minutes":10,"key_points":["","",""],"recall":"","checkpoint":""}]}
+        prompt=f"""Crie um PLANO DE MEMORIZAÇÃO EM MICRO-BLOCOS para estudar o PDF anexado "{row['filename']}".
+Use EXCLUSIVAMENTE o PDF. Não acrescente conteúdo externo.
+A pessoa tem dificuldade de manter a atenção em PDFs longos, então transforme o conteúdo em 6 a 8 micro-blocos curtos, sequenciais e independentes. Cada bloco deve durar 8 a 15 minutos.
+Cada bloco deve ter: objetivo de uma frase; exatamente 3 pontos-chave; uma pergunta de recordação ativa sem consultar o PDF; e um checkpoint simples de conclusão.
+Não tente resumir tudo em poucas frases: cubra os conceitos relevantes do PDF, mas em pequenas unidades.
+Retorne SOMENTE JSON: {json.dumps(schema,ensure_ascii=False)}"""
+        client=OpenAI(api_key=key,timeout=120,max_retries=2)
+        r=_response_with_file(client,row,prompt,True)
+        data=json.loads(_clean_json_text(r.output_text))
+        blocks=data.get("microblocks") or []
+        if not blocks: raise RuntimeError("Não foi possível montar os micro-blocos.")
+        return {"ok":True,"material":row["filename"],"plan":data}
+    except Exception as e:
+        return JSONResponse({"ok":False,"error":str(e)},status_code=500)
 
 
 @app.get("/api/generated/{filename}")

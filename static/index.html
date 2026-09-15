@@ -1,7 +1,7 @@
 
 <!doctype html><html lang="pt-BR"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Professor MD 4.4</title>
+<title>Professor MD 4.6</title>
 <style>
 :root{--navy:#0b2a55;--blue:#1d63b8;--bg:#f3f6fb;--text:#14233d;--muted:#68758a;--line:#dce4ef;--green:#14a66b;--red:#e44d5d;--purple:#7357d9}
 *{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Arial;background:var(--bg);color:var(--text)}
@@ -17,11 +17,11 @@ main{max-width:1250px;width:100%;margin:auto;padding:16px}
 .plan{border:1px solid var(--line);border-radius:13px;padding:14px;margin:10px 0}.num{display:inline-flex;width:28px;height:28px;border-radius:50%;background:#16a66d;color:#fff;align-items:center;justify-content:center;font-weight:700;margin-right:7px}.tag{display:inline-block;background:#edf4ff;color:#315b8e;border-radius:999px;padding:4px 8px;font-size:11px;margin:3px}.actions{display:flex;gap:8px;margin-top:10px}.btn{border:0;border-radius:9px;background:var(--navy);color:#fff;padding:10px 13px;cursor:pointer}.btn.light{background:#edf2f8;color:#173052}.btn.green{background:#159c66}.btn.purple{background:#7255d6}
 .chat{background:#f4f7fb;padding:13px;border-radius:12px;min-height:100px}.quick{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0}.quick button{border:1px solid #d5e0ef;background:#fff;border-radius:8px;padding:8px;cursor:pointer;color:#173052}
 textarea,input,select{width:100%;padding:11px;border:1px solid #cfd9e7;border-radius:9px;font-size:15px;margin:5px 0 10px}.answer{white-space:pre-wrap;line-height:1.55;background:#f7f9fc;border-radius:10px;padding:12px;margin-top:10px}
-.progress{font-size:34px;font-weight:800;color:var(--green)}.bar{height:12px;background:#e8eef6;border-radius:999px;overflow:hidden}.bar>span{display:block;height:100%;background:var(--green);border-radius:999px}.topicrow{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #eef2f7}.topicrow:last-child{border-bottom:0}.check{font-size:18px;width:25px}.topicrow b{flex:1}.current{background:#eef7f2;border:1px solid #bfe5d2;border-radius:10px;padding:9px}.discipline-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.mini{font-size:11px;color:var(--muted)}.statuspill{padding:4px 8px;border-radius:999px;font-size:11px;background:#edf2f8}.statuspill.current{background:#dff5e9;color:#087047}.statuspill.done{background:#e4f7ee;color:#087047}.planwide{margin-top:14px}.nextitem{border:1px solid var(--line);border-radius:12px;padding:12px;margin:8px 0}.nextitem.current{border-color:#9dd9bc}.complete{background:var(--green);color:white;border:0;border-radius:8px;padding:8px 10px;cursor:pointer}.complete:disabled{opacity:.5;cursor:not-allowed}.tagA{background:#fff0d7;color:#8a5b08}.tagB{background:#e8f0ff;color:#315b8e}.tagC{background:#f0ebff;color:#6547a9}.list{line-height:1.8}.small{font-size:13px}.hide{display:none}
+.progress{font-size:34px;font-weight:800;color:var(--green)}.bar{height:12px;background:#e8eef6;border-radius:999px;overflow:hidden}.bar>span{display:block;height:100%;background:var(--green);border-radius:999px}.topicrow{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #eef2f7}.topicrow:last-child{border-bottom:0}.check{font-size:18px;width:25px}.topicrow b{flex:1}.current{background:#eef7f2;border:1px solid #bfe5d2;border-radius:10px;padding:9px}.discipline-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.mini{font-size:11px;color:var(--muted)}.statuspill{padding:4px 8px;border-radius:999px;font-size:11px;background:#edf2f8}.statuspill.current{background:#dff5e9;color:#087047}.statuspill.done{background:#e4f7ee;color:#087047}.planwide{margin-top:14px}.nextitem{border:1px solid var(--line);border-radius:12px;padding:12px;margin:8px 0}.nextitem.current{border-color:#9dd9bc}.complete{background:var(--green);color:white;border:0;border-radius:8px;padding:8px 10px;cursor:pointer}.complete:disabled{opacity:.5;cursor:not-allowed}.tagA{background:#fff0d7;color:#8a5b08}.tagB{background:#e8f0ff;color:#315b8e}.tagC{background:#f0ebff;color:#6547a9}.list{line-height:1.8}.small{font-size:13px}.hide{display:none}.filedrop{border:2px dashed #b9c9df;border-radius:14px;padding:16px;text-align:center;background:#f8fbff;cursor:pointer}.filedrop:hover{border-color:#1d63b8}.filedrop input{display:none}.filename{font-weight:700;margin-top:8px;word-break:break-word}.focusbox{background:#f8f7ff;border:1px solid #ddd5ff;border-radius:14px;padding:14px;margin-top:12px}.microblock{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;margin:9px 0}.timer{font-size:28px;font-weight:800;text-align:center;padding:10px}.focusactive{outline:3px solid #b8a9ff}
 @media(max-width:950px){.layout{grid-template-columns:1fr}nav{display:none}.metrics{grid-template-columns:repeat(3,1fr);gap:10px}.metric{border:0}.grid2,.grid3{grid-template-columns:1fr}}
 @media(max-width:600px){header{padding:14px}.brand h1{font-size:23px}.pills .pill:last-child{display:none}main{padding:10px}.hero{padding:15px}.metrics{grid-template-columns:repeat(2,1fr)}.metric b{font-size:19px}.card{padding:14px}}
-.modal{position:fixed;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;z-index:50;padding:14px}.modal.hide{display:none}.modalbox{background:#fff;border-radius:18px;max-width:760px;width:100%;max-height:92vh;overflow:auto;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.25)}.iconbtn{border:0;background:#eef2f7;border-radius:10px;padding:8px 11px;cursor:pointer}.quizq{border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0}.quizq h4{margin:0 0 10px}.option{display:block;border:1px solid #dce4ee;border-radius:10px;padding:10px;margin:7px 0;cursor:pointer}.option input{margin-right:8px}.resultgood{background:#e8f7ef;border:1px solid #bfe5d2;border-radius:12px;padding:12px;margin-top:12px}.resultbad{background:#fff1f1;border:1px solid #f0caca;border-radius:12px;padding:12px;margin-top:12px}.lessonbox{white-space:pre-wrap;line-height:1.65}.answer{white-space:pre-wrap;line-height:1.6}</style></head><body>
-<header><div class="brand"><div class="cap">🎓</div><div><h1>Professor MD 4.5</h1><p>Seu professor particular para preparação FUMARC — TRT-MG</p></div></div><div class="pills"><div id="online" class="pill online">● Sistema online</div><div id="ai" class="pill">OpenAI</div></div></header>
+.modal{position:fixed;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;z-index:50;padding:14px}.modal.hide{display:none}.filedrop{border:2px dashed #b9c9df;border-radius:14px;padding:16px;text-align:center;background:#f8fbff;cursor:pointer}.filedrop:hover{border-color:#1d63b8}.filedrop input{display:none}.filename{font-weight:700;margin-top:8px;word-break:break-word}.focusbox{background:#f8f7ff;border:1px solid #ddd5ff;border-radius:14px;padding:14px;margin-top:12px}.microblock{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;margin:9px 0}.timer{font-size:28px;font-weight:800;text-align:center;padding:10px}.focusactive{outline:3px solid #b8a9ff}.modalbox{background:#fff;border-radius:18px;max-width:760px;width:100%;max-height:92vh;overflow:auto;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.25)}.iconbtn{border:0;background:#eef2f7;border-radius:10px;padding:8px 11px;cursor:pointer}.quizq{border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0}.quizq h4{margin:0 0 10px}.option{display:block;border:1px solid #dce4ee;border-radius:10px;padding:10px;margin:7px 0;cursor:pointer}.option input{margin-right:8px}.resultgood{background:#e8f7ef;border:1px solid #bfe5d2;border-radius:12px;padding:12px;margin-top:12px}.resultbad{background:#fff1f1;border:1px solid #f0caca;border-radius:12px;padding:12px;margin-top:12px}.lessonbox{white-space:pre-wrap;line-height:1.65}.answer{white-space:pre-wrap;line-height:1.6}</style></head><body>
+<header><div class="brand"><div class="cap">🎓</div><div><h1>Professor MD 4.6</h1><p>Seu professor particular para preparação FUMARC — TRT-MG</p></div></div><div class="pills"><div id="online" class="pill online">● Sistema online</div><div id="ai" class="pill">OpenAI</div></div></header>
 <div class="layout"><nav>
 <div class="navbtn active">🏠 Início</div><div class="navbtn">🗓️ Meu Plano</div><div class="navbtn">🤖 Professor</div><div class="navbtn">📄 PDFs</div><div class="navbtn">📝 Questões</div><div class="navbtn">📈 Desempenho</div><div class="navbtn">🔄 Revisões</div><div class="navbtn">📕 Erros e Caderno</div><div class="navbtn">⚙️ Configurações</div>
 <div class="goal">🎯<br><b>Disciplina hoje,<br>resultado amanhã!</b><br><br>TRT-MG • FUMARC</div></nav>
@@ -39,7 +39,8 @@ textarea,input,select{width:100%;padding:11px;border:1px solid #cfd9e7;border-ra
 </div>
 
 <div class="grid3">
-<section class="card"><h3>📚 Minha biblioteca de PDFs</h3><div id="libraryInfo" class="sub">Carregando biblioteca...</div><div id="materials" class="small">Nenhum PDF.</div><hr><input id="pdf" type="file" accept=".pdf"><input id="subject" placeholder="Disciplina (ex.: Contabilidade Geral)"><input id="topic" placeholder="Assunto"><button id="uploadBtn" class="btn" onclick="upload()">Enviar novo PDF</button><p id="up" class="sub"></p><hr><h4>🧠 Gerar material de revisão</h4><p class="sub">Escolha um PDF processado e gere um arquivo PDF pronto para estudar.</p><select id="genMaterial"></select><div class="actions"><button class="btn light" onclick="generatePDF('mindmap')">🧠 Mapa mental PDF</button><button class="btn light" onclick="generatePDF('flashcards')">🃏 Flashcards PDF</button><button class="btn" onclick="generateQuestions()">📝 Gerar questões</button></div><p id="genStatus" class="sub"></p></section>
+<section class="card"><h3>📚 Minha biblioteca de PDFs</h3><div id="libraryInfo" class="sub">Carregando biblioteca...</div><div id="materials" class="small">Nenhum PDF.</div><hr><label class="filedrop" for="pdf">📄 <b>Toque aqui para selecionar o PDF</b><br><span class="sub">Funciona no celular e no tablet</span><input id="pdf" type="file" accept="application/pdf,.pdf" onchange="showSelectedFile()"><div id="selectedFile" class="filename">Nenhum arquivo escolhido</div></label><input id="subject" placeholder="Disciplina (ex.: Contabilidade Geral)"><input id="topic" placeholder="Assunto"><button id="uploadBtn" class="btn" onclick="upload()">Enviar novo PDF</button><p id="up" class="sub"></p><hr><h4>🧠 Gerar material de revisão</h4><p class="sub">Escolha um PDF processado e gere um arquivo PDF pronto para estudar.</p><select id="genMaterial"></select><div class="actions"><button class="btn light" onclick="generatePDF('mindmap')">🧠 Mapa mental PDF</button><button class="btn light" onclick="generatePDF('flashcards')">🃏 Flashcards PDF</button><button class="btn" onclick="generateQuestions()">📝 Gerar questões</button></div><p id="genStatus" class="sub"></p></section>
+<section class="card"><h3>🧠 Modo Foco & Memorização</h3><p class="sub">Para PDFs longos: transforme o material em pequenos blocos, estude uma coisa por vez e faça recordação ativa antes de avançar.</p><select id="focusMaterial"></select><div class="actions"><button class="btn purple" onclick="buildFocusPlan()">🧩 Quebrar em micro-blocos</button><button class="btn light" onclick="startFocusTimer(15)">⏱️ 15 min</button><button class="btn light" onclick="startFocusTimer(25)">⏱️ 25 min</button></div><div id="focusTimer" class="timer">15:00</div><div id="focusPlan" class="focusbox"><span class="sub">Escolha um PDF pronto para criar seu plano de memorização.</span></div></section>
 <section class="card"><h3>📝 Registrar estudo</h3><input id="disc" value="Contabilidade Geral"><input id="top" value="Ativo Imobilizado"><input id="mins" type="number" value="60" placeholder="Minutos"><input id="nq" type="number" value="10" placeholder="Questões resolvidas"><input id="nc" type="number" value="8" placeholder="Acertos"><textarea id="notes" rows="2" placeholder="Observações / pontos fracos"></textarea><button class="btn" onclick="save()">Salvar sessão</button></section>
 <section class="card"><h3>📊 Seu progresso</h3><div class="progress" id="bigscore">0%</div><p class="sub">Média geral</p><div class="list small">⏱️ <span id="ph">0h</span> estudadas<br>📝 <span id="pq">0</span> questões<br>✅ <span id="pc">0</span> acertos<br>⚠️ <span id="pe">0</span> assuntos fracos</div><hr><b>Próximas revisões</b><div class="small">R0 — Hoje<br>R1 — Amanhã<br>R7 — +7 dias<br>R30 — +30 dias</div></section>
 </div>
@@ -60,7 +61,7 @@ async function load(){
  $('reviews').innerHTML=t.reviews.length?t.reviews.map(x=>`<div class="topicrow"><span class="check">🔔</span><b>${esc(x.topic)}</b><span class="mini">${esc(x.review_type)} • ${esc(x.review_date)}</span><button class="complete" onclick="completeReview(${x.id})">OK</button></div>`).join(''):'Nenhuma revisão pendente.';
  $('materials').innerHTML=m.items.length?m.items.slice(0,12).map(x=>'📄 <b>'+esc(x.filename)+'</b><br><span class="sub">'+esc(x.subject||'')+' • '+esc(x.topic||'')+'</span><br>'+materialStatusLabel(x)+'<div class="actions"><a class="btn light" href="/api/materials/'+x.id+'/file" target="_blank">Abrir PDF</a></div><hr>').join(''):'Nenhum PDF enviado.';
  const ready=m.items.filter(x=>x.processing_status==='ready');
- $('genMaterial').innerHTML=ready.length?ready.map(x=>`<option value="${x.id}">${esc(x.filename)}${x.topic?' — '+esc(x.topic):''}</option>`).join(''):'<option value="">Nenhum PDF pronto</option>';
+ $('genMaterial').innerHTML=ready.length?ready.map(x=>`<option value="${x.id}">${esc(x.filename)}${x.topic?' — '+esc(x.topic):''}</option>`).join(''):'<option value="">Nenhum PDF pronto</option>'; $('focusMaterial').innerHTML=ready.length?ready.map(x=>`<option value="${x.id}">${esc(x.filename)}${x.topic?' — '+esc(x.topic):''}</option>`).join(''):'<option value="">Nenhum PDF pronto</option>';
  $('errors').innerHTML=d.errors.length?d.errors.slice(0,8).map(x=>'⚠️ <b>'+esc(x.topic)+'</b> — revisão '+esc(x.review_date||'a definir')).join('<br>'):'Nenhum erro registrado ainda.';
  }catch(e){$('online').textContent='● Sistema: verifique o servidor';console.log(e)}
 }
@@ -78,8 +79,11 @@ async function completeTopic(id){
 }
 async function lesson(id){
   $('chat').scrollIntoView({behavior:'smooth',block:'center'});
-  $('chat').innerHTML='<div class="sub">🎓 Preparando sua aula com base no PDF...</div>';
-  try{const fd=new URLSearchParams({topic_id:id});const d=await api('/api/lesson',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:fd});$('chat').innerHTML='<div class="lessonbox"><b>🎓 Aula: '+esc(d.topic||'')+'</b><br><span class="sub">Fonte: '+esc(d.material||'PDF associado')+'</span><hr>'+esc(d.answer)+'</div>';speak(d.answer||'')}catch(e){$('chat').innerHTML='<div class="resultbad">❌ '+esc(e.message)+'</div>'}
+  $('chat').innerHTML='<div class="sub">🎓 Preparando sua aula... isso pode levar alguns segundos.</div>';
+  try{const fd=new URLSearchParams({topic_id:id});const d=await api('/api/lesson',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:fd});
+    $('chat').innerHTML='<div class="lessonbox"><b>🎓 Aula: '+esc(d.topic||'')+'</b><br><span class="sub">Fonte: '+esc(d.material||'PDF associado')+'</span><hr>'+esc(d.answer||'Não foi possível montar a aula.')+'</div>';
+    speak(d.answer||'');
+  }catch(e){$('chat').innerHTML='<div class="resultbad">❌ '+esc(e.message)+'<br><br>Verifique se há um PDF com status <b>Pronto para perguntas</b> associado ao assunto.</div>'}
 }
 
 async function generateQuestions(){
@@ -149,7 +153,7 @@ async function upload(){
     let d=await api('/api/upload',{method:'POST',body:fd});
     $('up').textContent='✅ '+d.message;
     $('uploadBtn').disabled=false;$('uploadBtn').textContent='Enviar novo PDF';
-    $('pdf').value='';
+    $('pdf').value=''; $('selectedFile').textContent='Nenhum arquivo escolhido';
     load();
     if(d.id) pollMaterial(d.id);
   }catch(e){
@@ -157,6 +161,26 @@ async function upload(){
     $('uploadBtn').disabled=false;$('uploadBtn').textContent='Enviar novo PDF';
   }
 }
+function showSelectedFile(){
+  const f=$('pdf').files[0];
+  $('selectedFile').textContent=f?('📄 '+f.name+' • '+Math.ceil(f.size/1024/1024*10)/10+' MB'):'Nenhum arquivo escolhido';
+}
+let focusTimerId=null, focusSeconds=900;
+function startFocusTimer(minutes){
+  if(focusTimerId) clearInterval(focusTimerId);
+  focusSeconds=minutes*60; $('focusTimer').textContent=String(minutes).padStart(2,'0')+':00';
+  $('focusTimer').classList.add('focusactive');
+  focusTimerId=setInterval(()=>{focusSeconds--; const m=Math.floor(focusSeconds/60),s=focusSeconds%60; $('focusTimer').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); if(focusSeconds<=0){clearInterval(focusTimerId);focusTimerId=null;$('focusTimer').classList.remove('focusactive');alert('⏰ Bloco concluído! Faça 1 minuto de recordação sem olhar o PDF antes de continuar.');}},1000);
+}
+async function buildFocusPlan(){
+  const id=$('focusMaterial').value; if(!id)return alert('Primeiro envie e aguarde um PDF ficar pronto.');
+  $('focusPlan').innerHTML='<div class="sub">🧠 Organizando o PDF em micro-blocos de estudo...</div>';
+  try{const fd=new URLSearchParams({material_id:id});const d=await api('/api/focus/plan',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:fd});
+    const blocks=d.plan.microblocks||[];
+    $('focusPlan').innerHTML='<b>🎯 '+esc(d.plan.title||'Plano de memorização')+'</b><div class="sub">Fonte: '+esc(d.material)+'</div>'+blocks.map((b,i)=>`<div class="microblock"><b>${i+1}. ${esc(b.title)}</b><br><span class="tag">${esc(b.minutes||10)} min</span><p><b>Objetivo:</b> ${esc(b.objective)}</p><b>3 pontos-chave</b><ul>${(b.key_points||[]).slice(0,3).map(x=>'<li>'+esc(x)+'</li>').join('')}</ul><p><b>🧠 Recordação ativa:</b> ${esc(b.recall)}</p><p><b>✅ Checkpoint:</b> ${esc(b.checkpoint)}</p><button class="btn light" onclick="startFocusTimer(${Math.min(15,Math.max(8,Number(b.minutes)||10))})">Começar este bloco</button></div>`).join('');
+  }catch(e){$('focusPlan').innerHTML='<div class="resultbad">❌ '+esc(e.message)+'</div>'}
+}
+
 async function generatePDF(kind){
   const id=$('genMaterial').value;
   if(!id)return alert('Primeiro envie e aguarde um PDF ficar como “Pronto para perguntas”.');
