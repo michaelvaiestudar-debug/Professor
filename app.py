@@ -26,7 +26,7 @@ VECTOR_STORE_ID = os.getenv("OPENAI_VECTOR_STORE_ID", "").strip()
 MAX_PDF_BYTES = 25 * 1024 * 1024
 VS_LOCK = threading.Lock()
 
-app = FastAPI(title="Professor MD", version="4.7")
+app = FastAPI(title="Professor MD", version="4.8")
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_credentials=True,
     allow_methods=["*"], allow_headers=["*"]
@@ -450,6 +450,41 @@ def update_material(material_id, **fields):
     c.commit(); c.close()
 
 
+def wait_vector_file_ready(client, vector_store_id, file_id, timeout_seconds=180):
+    """Wait until the vector-store file is actually searchable."""
+    deadline = time.time() + timeout_seconds
+    last = "in_progress"
+    while time.time() < deadline:
+        item = client.vector_stores.files.retrieve(vector_store_id=vector_store_id, file_id=file_id)
+        last = getattr(item, "status", None) or "in_progress"
+        if last == "completed":
+            return
+        if last in ("failed", "cancelled"):
+            detail = getattr(item, "last_error", None)
+            raise RuntimeError(f"O processamento do PDF pela IA falhou: {detail or last}")
+        time.sleep(2)
+    raise RuntimeError(f"O PDF ainda está sendo processado pela IA (status: {last}). Tente novamente em alguns minutos.")
+
+
+def source_bytes_for_material(row):
+    if row["storage_backend"] == "supabase" and row["storage_path"]:
+        return supabase_download(row["storage_path"])
+    p = UPLOADS / Path(row["filename"]).name
+    if not p.exists():
+        raise RuntimeError("O arquivo PDF não está disponível para reprocessamento.")
+    return p.read_bytes()
+
+
+def start_material_processing(material_id):
+    c = conn(); row = c.execute("SELECT * FROM materials WHERE id=?", (material_id,)).fetchone(); c.close()
+    if not row:
+        raise RuntimeError("PDF não encontrado.")
+    data = source_bytes_for_material(row)
+    update_material(material_id, processing_status="queued", processing_error="")
+    worker = threading.Thread(target=process_pdf_background, args=(material_id, row["filename"], data), daemon=True, name=f"professor-md-reprocess-{material_id}")
+    worker.start()
+
+
 def process_pdf_background(material_id, name, data):
     """Process the PDF outside the upload HTTP request.
 
@@ -475,6 +510,8 @@ def process_pdf_background(material_id, name, data):
         # Attach the file and return immediately. The vector-store service can
         # continue processing it after this call; the UI will show the state.
         client.vector_stores.files.create(vector_store_id=vs, file_id=oid)
+        # Do not mark the material ready until vector-store indexing is complete.
+        wait_vector_file_ready(client, vs, oid)
         update_material(material_id, processing_status="ready", processing_error="")
         # Keep the persistent library metadata synchronized so a Render restart
         # can rebuild the visible library and continue using the same OpenAI file.
@@ -550,6 +587,16 @@ async def upload(file: UploadFile = File(...), subject: str = Form(""), topic: s
     }
 
 
+@app.post("/api/materials/{material_id}/process")
+def process_existing_material(material_id: int):
+    try:
+        start_material_processing(material_id)
+        return {"ok": True, "message": "Processamento iniciado. Aguarde o status Pronto."}
+    except Exception as e:
+        update_material(material_id, processing_status="error", processing_error=str(e))
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+
+
 @app.get("/api/materials/{material_id}")
 def material_status(material_id: int):
     c = conn()
@@ -574,9 +621,9 @@ def _source_prompt(material_id, kind):
     if not row:
         raise RuntimeError("PDF não encontrado.")
     if row["processing_status"] not in ("ready", "archived"):
-        raise RuntimeError("Este PDF ainda não está pronto. Aguarde o processamento terminar.")
+        raise RuntimeError("Este PDF ainda não está pronto para a IA. Use 'Processar com IA' e aguarde aparecer como Pronto.")
     if not row["openai_file_id"]:
-        raise RuntimeError("Este PDF está salvo na biblioteca, mas ainda não possui arquivo processado pela IA.")
+        raise RuntimeError("Este PDF está salvo na biblioteca, mas ainda não foi processado pela IA. Clique em 'Processar com IA'.")
     filename = row["filename"]
     subject = row["subject"] or ""
     topic = row["topic"] or ""
@@ -1128,6 +1175,12 @@ def today():
 @app.get("/api/materials")
 def materials():
     c = conn(); rows = [dict(x) for x in c.execute("SELECT * FROM materials ORDER BY id DESC").fetchall()]; c.close()
+    # A file marked 'archived' from an older version is not AI-ready unless it
+    # actually has an OpenAI file id. Make the UI truthful and actionable.
+    for r in rows:
+        if r.get("processing_status") == "archived" and not r.get("openai_file_id"):
+            r["processing_status"] = "needs_processing"
+            update_material(r["id"], processing_status="needs_processing")
     if supabase_configured():
         try:
             objects = supabase_list("pdfs/")
@@ -1140,7 +1193,7 @@ def materials():
                 try:
                     meta = json.loads(supabase_download("meta/" + name + ".json").decode("utf-8"))
                 except Exception:
-                    meta = {"filename": name, "subject":"", "topic":"", "created_at":"", "size_bytes":0, "sha256":"", "storage_path":sp, "processing_status":"archived"}
+                    meta = {"filename": name, "subject":"", "topic":"", "created_at":"", "size_bytes":0, "sha256":"", "storage_path":sp, "processing_status":"needs_processing"}
                 c=conn()
                 cur=c.execute("""INSERT INTO materials(filename,openai_file_id,vector_store_id,subject,topic,created_at,processing_status,processing_error,size_bytes,storage_path,storage_backend,sha256)
                                 VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",

@@ -87,9 +87,9 @@ async function load(){
  $('bigscore').textContent=d.score+'%';$('ph').textContent=d.hours+'h';$('pq').textContent=d.questions;$('pc').textContent=d.correct;$('pe').textContent=d.weak_topics;$('todaydate').textContent='— '+t.date;$('planpct').textContent=p.pct+'%';$('planbar').style.width=p.pct+'%';$('plantxt').textContent=p.completed+' de '+p.total+' assuntos concluídos';renderPlan(p);
 
  $('reviews').innerHTML=t.reviews.length?t.reviews.map(x=>`<div class="topicrow"><span class="check">🔔</span><b>${esc(x.topic)}</b><span class="mini">${esc(x.review_type)} • ${esc(x.review_date)}</span><button class="complete" onclick="completeReview(${x.id})">OK</button></div>`).join(''):'Nenhuma revisão pendente.';
- $('materials').innerHTML=m.items.length?m.items.slice(0,12).map(x=>'📄 <b>'+esc(x.filename)+'</b><br><span class="sub">'+esc(x.subject||'')+' • '+esc(x.topic||'')+'</span><br>'+materialStatusLabel(x)+'<div class="actions"><a class="btn light" href="/api/materials/'+x.id+'/file" target="_blank">Abrir PDF</a></div><hr>').join(''):'Nenhum PDF enviado.';
- const ready=m.items.filter(x=>['ready','archived'].includes(x.processing_status));
- const options=m.items.length?m.items.map(x=>`<option value="${x.id}">${esc(x.filename)} — ${esc(x.processing_status==='ready'?'Pronto':x.processing_status==='archived'?'Biblioteca':x.processing_status==='processing'?'Processando':'Aguardando')}</option>`).join(''):'<option value="">Nenhum PDF na biblioteca</option>';
+ $('materials').innerHTML=m.items.length?m.items.slice(0,12).map(x=>{const proc=!x.openai_file_id||x.processing_status==='needs_processing'||x.processing_status==='error'; return '📄 <b>'+esc(x.filename)+'</b><br><span class="sub">'+esc(x.subject||'')+' • '+esc(x.topic||'')+'</span><br>'+materialStatusLabel(x)+'<div class="actions"><a class="btn light" href="/api/materials/'+x.id+'/file" target="_blank">Abrir PDF</a>'+(proc?'<button class="btn light" onclick="processMaterial('+x.id+')">🤖 Processar com IA</button>':'')+'</div><hr>'}).join(''):'Nenhum PDF enviado.';
+ const ready=m.items.filter(x=>x.processing_status==='ready' && x.openai_file_id);
+ const options=m.items.length?m.items.map(x=>`<option value="${x.id}">${esc(x.filename)} — ${esc(x.processing_status==='ready'?'Pronto':x.processing_status==='needs_processing'?'Precisa processar':x.processing_status==='processing'?'Processando':x.processing_status==='queued'?'Aguardando':'Erro')}</option>`).join(''):'<option value="">Nenhum PDF na biblioteca</option>';
  $('genMaterial').innerHTML=options; $('focusMaterial').innerHTML=options;
  if(ready.length){ $('genMaterial').value=String(ready[0].id); $('focusMaterial').value=String(ready[0].id); }
  $('genMaterialStatus').textContent=ready.length?`✅ ${ready.length} PDF(s) pronto(s) para gerar material.`:'⏳ Nenhum PDF pronto ainda. Aguarde o processamento.';
@@ -146,9 +146,18 @@ function materialStatusLabel(x){
   const st=x.processing_status||'ready';
   if(st==='queued') return '⏳ <span class="sub">Recebido — aguardando processamento</span>';
   if(st==='processing') return '🔄 <span class="sub">Processando em segundo plano...</span>';
+  if(st==='needs_processing') return '🟠 <span class="sub">Salvo na biblioteca — precisa ser processado pela IA</span>';
   if(st==='error') return '❌ <span class="sub">Erro: '+esc(x.processing_error||'falha no processamento')+'</span>';
   if(st==='archived') return '📚 <span class="sub">Salvo na biblioteca permanente</span>';
   return '✅ <span class="sub">Pronto para perguntas</span>';
+}
+
+async function processMaterial(id){
+  try{
+    const d=await api('/api/materials/'+id+'/process',{method:'POST'});
+    $('genStatus').textContent='🔄 '+(d.message||'Processamento iniciado.');
+    load();
+  }catch(e){alert('Não foi possível iniciar o processamento: '+e.message)}
 }
 
 let uploadPollTimer=null;
