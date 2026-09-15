@@ -26,7 +26,7 @@ VECTOR_STORE_ID = os.getenv("OPENAI_VECTOR_STORE_ID", "").strip()
 MAX_PDF_BYTES = 25 * 1024 * 1024
 VS_LOCK = threading.Lock()
 
-app = FastAPI(title="Professor MD", version="4.4.1")
+app = FastAPI(title="Professor MD", version="4.5")
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_credentials=True,
     allow_methods=["*"], allow_headers=["*"]
@@ -145,6 +145,9 @@ def conn():
     c.execute("""CREATE TABLE IF NOT EXISTS reviews(
         id INTEGER PRIMARY KEY AUTOINCREMENT, topic_id INTEGER, discipline TEXT, topic TEXT,
         review_date TEXT, review_type TEXT, completed INTEGER DEFAULT 0, completed_at TEXT)""")
+    c.execute("""CREATE TABLE IF NOT EXISTS quizzes(
+        id INTEGER PRIMARY KEY AUTOINCREMENT, material_id INTEGER, discipline TEXT, topic TEXT,
+        questions_json TEXT, created_at TEXT, completed INTEGER DEFAULT 0)""")
     seed_plan(c)
     c.commit()
     return c
@@ -369,7 +372,7 @@ def home():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "app": "Professor MD", "version": "4.4"}
+    return {"status": "ok", "app": "Professor MD", "version": "4.5"}
 
 
 @app.get("/api/status")
@@ -572,62 +575,128 @@ def _source_prompt(material_id, kind):
         raise RuntimeError("PDF não encontrado.")
     if row["processing_status"] not in ("ready", "archived"):
         raise RuntimeError("Este PDF ainda não está pronto. Aguarde o processamento terminar.")
-    if row["processing_status"] == "archived" and not row["openai_file_id"]:
-        raise RuntimeError("Este PDF está salvo na biblioteca, mas ainda precisa ser processado pela IA.")
+    if not row["openai_file_id"]:
+        raise RuntimeError("Este PDF está salvo na biblioteca, mas ainda não possui arquivo processado pela IA.")
     filename = row["filename"]
     subject = row["subject"] or ""
     topic = row["topic"] or ""
     if kind == "flashcards":
         schema = {
           "title": "título curto",
-          "cards": [{"question": "pergunta", "answer": "resposta objetiva e fiel ao PDF", "trap": "pegadinha ou ponto de atenção, se houver", "level": "basico|intermediario|fumarc"}]
+          "cards": [{"question": "pergunta", "answer": "resposta objetiva e fiel ao PDF", "trap": "ponto de atenção somente se comprovado pelo PDF", "level": "basico|intermediario|fumarc"}]
         }
-        instruction = f'''Crie 18 flashcards de estudo EXCLUSIVAMENTE com base no PDF chamado "{filename}".
-Disciplina: {subject}. Assunto: {topic}.
-Use o File Search e priorize esse arquivo; não misture conteúdo de outros PDFs.
-Distribua aproximadamente 6 básicos, 6 intermediários e 6 no nível "fumarc".
-O nível fumarc deve cobrar distinções, exceções, classificações e pegadinhas que estejam sustentadas pelo PDF.
-Não invente leis, artigos, páginas, exemplos ou fatos que não estejam no arquivo.
-Respostas curtas, precisas e úteis para revisão.
-Retorne SOMENTE JSON válido neste formato: {json.dumps(schema, ensure_ascii=False)}'''
+        instruction = f"""Você está criando material de revisão EXCLUSIVAMENTE a partir do arquivo PDF anexado, chamado \"{filename}\".
+Disciplina: {subject}. Assunto informado: {topic}.
+NÃO use conhecimento externo, outros arquivos ou memória geral para completar lacunas.
+Crie exatamente 15 flashcards.
+REGRA DE PRECISÃO: cada pergunta e cada resposta precisam estar claramente sustentadas pelo PDF. Não acrescente exceções, classificações, datas, leis, regras ou afirmações que não estejam no arquivo. Se houver dúvida sobre um detalhe, prefira não usá-lo.
+Não transforme uma inferência sua em fato do PDF.
+Use aproximadamente 5 básicos, 5 intermediários e 5 no nível \"fumarc\". O rótulo FUMARC significa apenas dificuldade/estilo, não questão oficial.
+O campo trap deve ficar vazio quando não houver uma pegadinha explicitamente sustentada pelo PDF.
+Faça perguntas objetivas, sem ambiguidades e com uma única resposta defensável.
+Retorne SOMENTE JSON válido neste formato: {json.dumps(schema, ensure_ascii=False)}"""
     else:
         schema = {
           "title": "título",
           "central": "tema central",
-          "branches": [{"title": "ramo", "items": ["item 1", "item 2", "item 3"]}],
+          "branches": [{"title": "ramo", "items": ["item 1", "item 2", "item 3", "item 4"]}],
           "traps": ["pegadinha 1", "pegadinha 2"]
         }
-        instruction = f'''Monte um mapa mental visual para estudo EXCLUSIVAMENTE com base no PDF chamado "{filename}".
-Disciplina: {subject}. Assunto: {topic}.
-Use o File Search e priorize esse arquivo; não misture conteúdo de outros PDFs.
-Crie 4 a 7 ramos principais, com 2 a 5 itens curtos por ramo. Inclua de 3 a 6 pegadinhas somente quando sustentadas pelo PDF.
-Preserve a terminologia e a organização do material. Não invente conteúdo.
-Retorne SOMENTE JSON válido neste formato: {json.dumps(schema, ensure_ascii=False)}'''
+        instruction = f"""Monte um mapa mental visual EXCLUSIVAMENTE a partir do arquivo PDF anexado, chamado \"{filename}\".
+Disciplina: {subject}. Assunto informado: {topic}.
+NÃO use conteúdo externo, outros arquivos ou memória geral.
+Organize todo o conteúdo relevante do PDF em 5 a 8 ramos principais. Cada ramo pode ter de 3 a 7 itens curtos, mas não corte conceitos importantes para caber em uma linha.
+Preserve a terminologia do material. Não invente conteúdo.
+As pegadinhas devem aparecer somente se forem sustentadas pelo PDF.
+Priorize cobertura completa e clareza. Não reduza o assunto a meia dúzia de frases.
+Retorne SOMENTE JSON válido neste formato: {json.dumps(schema, ensure_ascii=False)}"""
     return row, instruction
+
+
+def _response_with_file(client, row, instruction, json_mode=True):
+    content = [
+        {"type": "input_file", "file_id": row["openai_file_id"]},
+        {"type": "input_text", "text": instruction},
+    ]
+    kwargs = {
+        "model": MODEL,
+        "instructions": "Você é o Professor MD. Trabalhe somente com o PDF anexado. Responda em português do Brasil.",
+        "input": [{"role": "user", "content": content}],
+    }
+    if json_mode:
+        kwargs["text"] = {"format": {"type": "json_object"}}
+    return client.responses.create(**kwargs)
 
 
 def _ai_json(material_id, kind):
     key = os.getenv("OPENAI_API_KEY")
     if not key:
-        raise RuntimeError("Configure OPENAI_API_KEY no Render antes de gerar o PDF.")
+        raise RuntimeError("Configure OPENAI_API_KEY no Render antes de gerar o material.")
     row, instruction = _source_prompt(material_id, kind)
-    vs = row["vector_store_id"] or current_vs()
-    if not vs:
-        raise RuntimeError("O File Search ainda não está configurado. Envie e processe um PDF primeiro.")
     client = OpenAI(api_key=key, timeout=120.0, max_retries=2)
-    r = client.responses.create(
-        model=MODEL,
-        instructions="Você é o Professor MD. Trabalhe estritamente com o arquivo solicitado. Responda em português do Brasil.",
-        input=instruction,
-        tools=[{"type": "file_search", "vector_store_ids": [vs]}],
-        text={"format": {"type": "json_object"}}
-    )
+    r = _response_with_file(client, row, instruction, True)
     raw = _clean_json_text(r.output_text)
     try:
         data = json.loads(raw)
     except Exception as e:
         raise RuntimeError("A IA não retornou o formato estruturado esperado. Tente gerar novamente.") from e
+    if kind == "flashcards":
+        data = _audit_flashcards(client, row, data)
     return row, data
+
+
+def _audit_flashcards(client, row, data):
+    cards = data.get("cards") or []
+    if not cards:
+        return data
+    schema = {"cards": [{"question":"", "answer":"", "trap":"", "level":"basico|intermediario|fumarc"}]}
+    audit_prompt = f"""Audite os flashcards abaixo usando EXCLUSIVAMENTE o PDF anexado \"{row["filename"]}\".
+Para cada card, verifique se pergunta, resposta e ponto de atenção são literalmente sustentáveis pelo conteúdo do PDF.
+CORRIJA qualquer afirmação mais ampla que o PDF permita, remova qualquer informação externa e elimine cards ambíguos ou sem resposta única.
+Mantenha somente cards corretos e claros. Se um ponto de atenção não estiver comprovado, deixe trap vazio.
+Não crie fatos novos.
+Cards para auditar:
+{json.dumps(cards, ensure_ascii=False)}
+Retorne SOMENTE JSON neste formato: {json.dumps(schema, ensure_ascii=False)}"""
+    r = _response_with_file(client, row, audit_prompt, True)
+    try:
+        audited = json.loads(_clean_json_text(r.output_text))
+        if audited.get("cards"):
+            data["cards"] = audited["cards"][:15]
+    except Exception:
+        pass
+    return data
+
+
+def _generate_questions_json(material_id, count=5, focus=""):
+    key = os.getenv("OPENAI_API_KEY")
+    if not key:
+        raise RuntimeError("Configure OPENAI_API_KEY no Render antes de gerar questões.")
+    c = conn(); row = c.execute("SELECT * FROM materials WHERE id=?", (material_id,)).fetchone(); c.close()
+    if not row or not row["openai_file_id"] or row["processing_status"] not in ("ready", "archived"):
+        raise RuntimeError("Escolha um PDF processado e pronto para perguntas.")
+    count = max(3, min(int(count or 5), 10))
+    schema = {"questions": [{"id":1,"question":"","options":["A","B","C","D"],"correct_index":0,"explanation":"explicação fiel ao PDF","topic":""}]}
+    prompt = f"""Crie {count} questões originais de múltipla escolha, inspiradas no estilo de cobrança da FUMARC, EXCLUSIVAMENTE com base no PDF anexado \"{row["filename"]}\".
+Disciplina: {row["subject"] or ""}. Assunto: {row["topic"] or ""}. Foco adicional: {focus}.
+Cada questão deve ter exatamente 4 alternativas e apenas 1 alternativa correta.
+A alternativa correta e a explicação devem estar sustentadas pelo PDF. Não invente leis, números, exceções, conceitos ou exemplos.
+Use pegadinhas apenas quando houver distinções realmente presentes no PDF.
+Não são questões oficiais da FUMARC.
+Retorne SOMENTE JSON neste formato: {json.dumps(schema, ensure_ascii=False)}"""
+    client=OpenAI(api_key=key, timeout=120.0, max_retries=2)
+    r=_response_with_file(client,row,prompt,True)
+    try: data=json.loads(_clean_json_text(r.output_text))
+    except Exception as e: raise RuntimeError("A IA não retornou questões em formato válido.") from e
+    qs=data.get("questions") or []
+    valid=[]
+    for i,q in enumerate(qs[:count],1):
+        opts=q.get("options") or []; ci=q.get("correct_index")
+        if len(opts)==4 and isinstance(ci,int) and 0<=ci<4 and q.get("question"):
+            q["id"]=i; valid.append(q)
+    if len(valid)<3: raise RuntimeError("A IA gerou poucas questões válidas. Tente novamente.")
+    data["questions"]=valid
+    return row,data
 
 
 def _safe_filename(s):
@@ -665,43 +734,78 @@ def _build_flashcards_pdf(title, cards, out_path):
     doc.build(story)
 
 
+def _font_path(name="DejaVuSans.ttf"):
+    candidates=["/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf","/usr/share/fonts/dejavu/DejaVuSans.ttf"]
+    for p in candidates:
+        if Path(p).exists(): return p
+    return None
+
+
+def _register_pdf_fonts():
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    fp=_font_path(); bold=fp.replace("DejaVuSans.ttf","DejaVuSans-Bold.ttf") if fp else None
+    if fp:
+        try: pdfmetrics.registerFont(TTFont("DVS",fp))
+        except Exception: pass
+        if bold and Path(bold).exists():
+            try: pdfmetrics.registerFont(TTFont("DVSB",bold))
+            except Exception: pass
+    return ("DVS" if fp else "Helvetica", "DVSB" if bold and Path(bold).exists() else "Helvetica-Bold")
+
+
 def _build_mindmap_pdf(title, central, branches, traps, out_path):
     from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.units import mm
-    W,H=landscape(A4)
-    c=canvas.Canvas(str(out_path), pagesize=(W,H))
-    c.setTitle("Mapa Mental - " + title)
-    c.setFont("Helvetica-Bold", 20); c.drawCentredString(W/2,H-20*mm,"MAPA MENTAL — " + title)
-    c.setFont("Helvetica", 8); c.drawCentredString(W/2,H-26*mm,"Professor MD • baseado no PDF selecionado")
-    cx,cy=W/2,H/2+8*mm; cw,ch=62*mm,28*mm
-    c.setLineWidth(1.2); c.roundRect(cx-cw/2,cy-ch/2,cw,ch,5*mm,stroke=1,fill=0)
-    c.setFont("Helvetica-Bold", 13); c.drawCentredString(cx,cy+3*mm,str(central)[:48])
-    c.setFont("Helvetica", 8); c.drawCentredString(cx,cy-6*mm,"TEMA CENTRAL")
-    n=len(branches); cols=min(4,max(1,n))
-    for idx,b in enumerate(branches):
-        col=idx%cols; row=idx//cols
-        x=(col+0.5)*W/cols; y=H-48*mm-row*48*mm
-        c.line(cx,cy,x,y)
-        bw,bh=55*mm,32*mm
-        c.roundRect(x-bw/2,y-bh/2,bw,bh,4*mm,stroke=1,fill=0)
-        c.setFont("Helvetica-Bold",9); c.drawCentredString(x,y+10*mm,str(b.get("title","Ramo"))[:34])
-        c.setFont("Helvetica",7); yy=y+3*mm
-        for it in b.get("items",[])[:5]:
-            c.drawString(x-bw/2+3*mm,yy,"• "+str(it)[:54]); yy-=4*mm
+    from reportlab.pdfbase.pdfmetrics import stringWidth
+    W,H=landscape(A4); c=canvas.Canvas(str(out_path),pagesize=(W,H)); c.setTitle("Mapa Mental - "+title)
+    regular,bold=_register_pdf_fonts()
+    def wrap(text,font,size,maxw):
+        words=str(text or "").split(); lines=[]; cur=""
+        for w in words:
+            test=(cur+" "+w).strip()
+            if stringWidth(test,font,size)<=maxw: cur=test
+            else:
+                if cur: lines.append(cur)
+                cur=w
+        if cur: lines.append(cur)
+        return lines or [""]
+    def box(x,y,w,h,heading,items,hs=9,isize=7.5):
+        c.roundRect(x-w/2,y-h/2,w,h,5*mm,stroke=1,fill=0); c.setFont(bold,hs); c.drawCentredString(x,y+h/2-7*mm,str(heading)[:60])
+        yy=y+h/2-14*mm
+        for it in items:
+            for line in wrap("• "+str(it),regular,isize,w-8*mm)[:3]:
+                if yy<y-h/2+5*mm: break
+                c.setFont(regular,isize); c.drawString(x-w/2+4*mm,yy,line); yy-=4.2*mm
+            yy-=1*mm
+    c.setFont(bold,20); c.drawCentredString(W/2,H-15*mm,"MAPA MENTAL — "+str(title)[:70]); c.setFont(regular,8); c.drawCentredString(W/2,H-21*mm,"Professor MD • conteúdo organizado a partir do PDF selecionado")
+    cx,cy=W/2,H/2-2*mm; cw,ch=62*mm,30*mm; c.setLineWidth(1.5); c.roundRect(cx-cw/2,cy-ch/2,cw,ch,6*mm,stroke=1,fill=0)
+    center_lines=wrap(central,bold,13,cw-8*mm)[:3]; yy=cy+(len(center_lines)-1)*2.5*mm
+    for line in center_lines: c.setFont(bold,13); c.drawCentredString(cx,yy,line); yy-=5*mm
+    c.setFont(regular,8); c.drawCentredString(cx,cy-11*mm,"TEMA CENTRAL")
+    positions=[(W*.17,H*.72),(W*.17,H*.47),(W*.17,H*.22),(W*.39,H*.78),(W*.61,H*.78),(W*.83,H*.72),(W*.83,H*.47),(W*.83,H*.22)]
+    for i,b in enumerate(branches[:8]):
+        x,y=positions[i]; c.line(cx,cy,x,y); box(x,y,55*mm,34*mm,b.get("title","Ramo"),b.get("items",[])[:4])
     c.showPage()
-    c.setFont("Helvetica-Bold",20); c.drawString(18*mm,H-20*mm,"PEGADINHAS DE PROVA")
-    c.setFont("Helvetica",10); c.drawString(18*mm,H-28*mm,"Somente pontos sustentados pelo PDF selecionado.")
-    y=H-42*mm
-    for i,t in enumerate(traps[:10],1):
-        lines=textwrap.wrap(str(t), width=95)
-        c.setFont("Helvetica-Bold",10); c.drawString(20*mm,y,f"{i}.")
-        c.setFont("Helvetica",10); yy=y
-        for line in lines:
-            c.drawString(28*mm,yy,line); yy-=5*mm
-        y=yy-4*mm
-        if y<20*mm:
-            c.showPage(); y=H-20*mm
+    for start_idx in range(0,len(branches),2):
+        c.setFont(bold,18); c.drawString(15*mm,H-16*mm,"MAPA MENTAL — DETALHAMENTO"); c.setFont(regular,8); c.drawString(15*mm,H-22*mm,str(title)[:100])
+        for j,b in enumerate(branches[start_idx:start_idx+2]):
+            y=H-72*mm-j*88*mm; bw=W-30*mm; bh=70*mm; c.roundRect(15*mm,y-bh/2,bw,bh,6*mm,stroke=1,fill=0); c.setFont(bold,12); c.drawString(22*mm,y+bh/2-10*mm,str(b.get("title","Ramo"))[:100]); yy=y+bh/2-19*mm
+            for it in b.get("items",[]):
+                for line in wrap("• "+str(it),regular,9.5,bw-16*mm)[:4]:
+                    if yy<y-bh/2+7*mm: break
+                    c.setFont(regular,9.5); c.drawString(23*mm,yy,line); yy-=5*mm
+                yy-=1*mm
+        c.showPage()
+    traps=list(traps or []); idx=0
+    while idx<len(traps):
+        c.setFont(bold,18); c.drawString(15*mm,H-16*mm,"PEGADINHAS DE PROVA"); c.setFont(regular,8); c.drawString(15*mm,H-22*mm,"Somente pontos sustentados pelo PDF selecionado."); y=H-36*mm
+        for t in traps[idx:idx+7]:
+            lines=wrap(str(t),regular,10,W-38*mm); c.setFont(bold,10); c.drawString(18*mm,y,f"{idx+1}."); yy=y
+            for line in lines[:5]: c.setFont(regular,10); c.drawString(28*mm,yy,line); yy-=5.5*mm
+            y=yy-6*mm; idx+=1
+        c.showPage()
     c.save()
 
 
@@ -731,6 +835,52 @@ def generate_mindmap(material_id: int = Form(...)):
         return {"ok": True, "filename": filename, "url": f"/api/generated/{filename}"}
     except Exception as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+
+@app.post("/api/questions/generate")
+def generate_questions(material_id:int=Form(...), count:int=Form(5), focus:str=Form("")):
+    try:
+        row,data=_generate_questions_json(material_id,count,focus)
+        c=conn(); cur=c.execute("INSERT INTO quizzes(material_id,discipline,topic,questions_json,created_at,completed) VALUES(?,?,?,?,?,0)",(material_id,row["subject"] or "",row["topic"] or "",json.dumps(data["questions"],ensure_ascii=False),datetime.now().isoformat())); qid=cur.lastrowid; c.commit(); c.close()
+        public=[{"id":q["id"],"question":q["question"],"options":q["options"]} for q in data["questions"]]
+        return {"ok":True,"quiz_id":qid,"questions":public,"count":len(public),"material":row["filename"]}
+    except Exception as e: return JSONResponse({"ok":False,"error":str(e)},status_code=500)
+
+@app.post("/api/questions/submit")
+def submit_questions(quiz_id:int=Form(...), answers:str=Form("{}")):
+    try: ans=json.loads(answers or "{}")
+    except Exception: return JSONResponse({"ok":False,"error":"Respostas inválidas."},status_code=400)
+    c=conn(); row=c.execute("SELECT * FROM quizzes WHERE id=?",(quiz_id,)).fetchone()
+    if not row: c.close(); return JSONResponse({"ok":False,"error":"Questionário não encontrado."},status_code=404)
+    questions=json.loads(row["questions_json"] or "[]"); correct=0; wrong=[]
+    for q in questions:
+        chosen=ans.get(str(q["id"]),None)
+        if isinstance(chosen,int) and chosen==q["correct_index"]: correct+=1
+        else:
+            chosen_text=q["options"][chosen] if isinstance(chosen,int) and 0<=chosen<4 else "Não respondida"; right_text=q["options"][q["correct_index"]]
+            wrong.append({"question":q["question"],"chosen":chosen_text,"correct":right_text,"explanation":q.get("explanation","")})
+            c.execute("INSERT INTO errors(discipline,topic,question,mistake,action,review_date,created_at) VALUES(?,?,?,?,?,?,?)",(row["discipline"],row["topic"],q["question"],f"Marquei: {chosen_text}. Correta: {right_text}.","Revisar a questão e reler o trecho do PDF que fundamenta o gabarito.",(date.today()+timedelta(days=1)).isoformat(),datetime.now().isoformat()))
+    total=len(questions); score=round(correct/total*100,1) if total else 0
+    c.execute("UPDATE quizzes SET completed=1 WHERE id=?",(quiz_id,)); c.execute("INSERT INTO sessions(discipline,topic,minutes,questions,correct,score,notes,created_at) VALUES(?,?,?,?,?,?,?,?)",(row["discipline"],row["topic"],20,total,correct,score,"Questionário Professor MD",datetime.now().isoformat())); c.commit(); c.close()
+    return {"ok":True,"total":total,"correct":correct,"score":score,"wrong":wrong,"errors_added":len(wrong)}
+
+@app.post("/api/lesson")
+def lesson(topic_id:int=Form(...)):
+    c=conn(); topic=c.execute("SELECT * FROM study_topics WHERE id=?",(topic_id,)).fetchone(); mats=c.execute("SELECT * FROM materials WHERE processing_status='ready' ORDER BY id DESC").fetchall(); c.close()
+    if not topic: return JSONResponse({"ok":False,"error":"Assunto não encontrado."},status_code=404)
+    chosen=None; rt=topic["topic"].lower()
+    for m in mats:
+        mt=(m["topic"] or "").lower(); ms=(m["subject"] or "").lower()
+        if mt and (mt in rt or rt in mt): chosen=m; break
+        if topic["discipline"].lower() in ms and chosen is None: chosen=m
+    if not chosen or not chosen["openai_file_id"]: return {"ok":True,"answer":f"Não encontrei um PDF processado associado a “{topic['topic']}”. Envie o material correspondente para eu dar a aula baseada nele."}
+    key=os.getenv("OPENAI_API_KEY")
+    if not key: return JSONResponse({"ok":False,"error":"OPENAI_API_KEY não configurada."},status_code=500)
+    prompt=f"""Dê uma aula curta e completa sobre “{topic['topic']}”, para o concurso de Contador do TRT-MG/FUMARC, usando EXCLUSIVAMENTE o PDF anexado “{chosen['filename']}”.
+Estruture: 1) conceito, 2) pontos que mais merecem atenção, 3) exemplo se houver no PDF, 4) pegadinhas sustentadas pelo PDF, 5) 3 perguntas rápidas para o aluno.
+Não invente conteúdo e não diga que é aula oficial da FUMARC."""
+    client=OpenAI(api_key=key,timeout=120,max_retries=2); r=_response_with_file(client,chosen,prompt,False)
+    return {"ok":True,"answer":r.output_text,"material":chosen["filename"],"topic":topic["topic"]}
 
 
 @app.get("/api/generated/{filename}")
