@@ -1,4 +1,4 @@
-# Professor MD 4.6
+# Professor MD 4.7
 from pathlib import Path
 import os, sqlite3, json, threading, time
 from datetime import datetime, date, timedelta
@@ -26,7 +26,7 @@ VECTOR_STORE_ID = os.getenv("OPENAI_VECTOR_STORE_ID", "").strip()
 MAX_PDF_BYTES = 25 * 1024 * 1024
 VS_LOCK = threading.Lock()
 
-app = FastAPI(title="Professor MD", version="4.6")
+app = FastAPI(title="Professor MD", version="4.7")
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_credentials=True,
     allow_methods=["*"], allow_headers=["*"]
