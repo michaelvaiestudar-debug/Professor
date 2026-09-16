@@ -1,263 +1,58 @@
-
 <!doctype html><html lang="pt-BR"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=yes">
-<title>Professor MD 4.7</title>
+<title>Professor MD 5.0</title>
 <style>
 :root{--navy:#0b2a55;--blue:#1d63b8;--bg:#f3f6fb;--text:#14233d;--muted:#68758a;--line:#dce4ef;--green:#14a66b;--red:#e44d5d;--purple:#7357d9}
 *{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Arial;background:var(--bg);color:var(--text)}
-header{background:linear-gradient(110deg,#082b59,#174d96);color:#fff;padding:18px 22px;display:flex;align-items:center;justify-content:space-between;gap:15px}
-.brand{display:flex;align-items:center;gap:12px}.cap{font-size:38px}.brand h1{margin:0;font-size:28px}.brand p{margin:2px 0 0;opacity:.88;font-size:14px}
-.pills{display:flex;gap:8px}.pill{padding:9px 13px;border-radius:999px;background:#ffffff18;border:1px solid #ffffff22;font-size:13px}.online{background:#0c9f68}
-.layout{display:grid;grid-template-columns:190px 1fr;min-height:calc(100vh - 88px)}
-nav{background:#092752;color:#fff;padding:18px 10px}.navbtn{padding:12px;border-radius:10px;margin:4px 0;cursor:pointer}.navbtn.active,.navbtn:hover{background:#1b5aa5}.goal{margin-top:24px;padding:16px;border-radius:14px;background:#ffffff12;text-align:center;font-size:13px}
-main{max-width:1250px;width:100%;margin:auto;padding:16px}
-.hero{background:linear-gradient(105deg,#eaf3ff,#fff);border:1px solid #d8e6fa;border-radius:16px;padding:20px;margin-bottom:14px;display:flex;justify-content:space-between}.hero h2{margin:0 0 6px}.hero p{margin:0;color:#52647d}
-.metrics{display:grid;grid-template-columns:repeat(6,1fr);background:#fff;border:1px solid var(--line);border-radius:15px;padding:12px;margin-bottom:14px}.metric{text-align:center;border-right:1px solid var(--line)}.metric:last-child{border:0}.metric b{display:block;font-size:22px}.metric span{font-size:12px;color:var(--muted)}
-.grid2{display:grid;grid-template-columns:1.15fr .85fr;gap:14px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.card{background:#fff;border:1px solid var(--line);border-radius:15px;padding:18px;margin-bottom:14px}.card h3{margin:0 0 12px}.sub{font-size:12px;color:var(--muted)}
-.plan{border:1px solid var(--line);border-radius:13px;padding:14px;margin:10px 0}.num{display:inline-flex;width:28px;height:28px;border-radius:50%;background:#16a66d;color:#fff;align-items:center;justify-content:center;font-weight:700;margin-right:7px}.tag{display:inline-block;background:#edf4ff;color:#315b8e;border-radius:999px;padding:4px 8px;font-size:11px;margin:3px}.actions{display:flex;gap:8px;margin-top:10px}.btn{border:0;border-radius:9px;background:var(--navy);color:#fff;padding:10px 13px;cursor:pointer}.btn.light{background:#edf2f8;color:#173052}.btn.green{background:#159c66}.btn.purple{background:#7255d6}
-.chat{background:#f4f7fb;padding:13px;border-radius:12px;min-height:100px}.quick{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0}.quick button{border:1px solid #d5e0ef;background:#fff;border-radius:8px;padding:8px;cursor:pointer;color:#173052}
-textarea,input,select{width:100%;padding:11px;border:1px solid #cfd9e7;border-radius:9px;font-size:15px;margin:5px 0 10px}.answer{white-space:pre-wrap;line-height:1.55;background:#f7f9fc;border-radius:10px;padding:12px;margin-top:10px}
-.progress{font-size:34px;font-weight:800;color:var(--green)}.bar{height:12px;background:#e8eef6;border-radius:999px;overflow:hidden}.bar>span{display:block;height:100%;background:var(--green);border-radius:999px}.topicrow{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #eef2f7}.topicrow:last-child{border-bottom:0}.check{font-size:18px;width:25px}.topicrow b{flex:1}.current{background:#eef7f2;border:1px solid #bfe5d2;border-radius:10px;padding:9px}.discipline-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.mini{font-size:11px;color:var(--muted)}.statuspill{padding:4px 8px;border-radius:999px;font-size:11px;background:#edf2f8}.statuspill.current{background:#dff5e9;color:#087047}.statuspill.done{background:#e4f7ee;color:#087047}.planwide{margin-top:14px}.nextitem{border:1px solid var(--line);border-radius:12px;padding:12px;margin:8px 0}.nextitem.current{border-color:#9dd9bc}.complete{background:var(--green);color:white;border:0;border-radius:8px;padding:8px 10px;cursor:pointer}.complete:disabled{opacity:.5;cursor:not-allowed}.tagA{background:#fff0d7;color:#8a5b08}.tagB{background:#e8f0ff;color:#315b8e}.tagC{background:#f0ebff;color:#6547a9}.list{line-height:1.8}.small{font-size:13px}.hide{display:none}.filedrop{position:relative;border:2px dashed #9db5d4;border-radius:14px;padding:14px;text-align:center;background:#f8fbff;cursor:pointer;min-height:88px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}.filedrop:hover{border-color:#1d63b8}.filedrop input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;margin:0}.filename{font-weight:700;margin-top:8px;word-break:break-word;color:#173052}.filename{font-weight:700;margin-top:8px;word-break:break-word}.focusbox{background:#f8f7ff;border:1px solid #ddd5ff;border-radius:14px;padding:14px;margin-top:12px}.microblock{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;margin:9px 0}.timer{font-size:28px;font-weight:800;text-align:center;padding:10px}.focusactive{outline:3px solid #b8a9ff}
-@media(max-width:950px){.layout{grid-template-columns:1fr}nav{display:none}.metrics{grid-template-columns:repeat(3,1fr);gap:10px}.metric{border:0}.grid2,.grid3{grid-template-columns:1fr}}
-@media(max-width:600px){header{padding:14px}.brand h1{font-size:23px}.pills .pill:last-child{display:none}main{padding:10px}.hero{padding:15px}.metrics{grid-template-columns:repeat(2,1fr)}.metric b{font-size:19px}.card{padding:14px}}
-.modal{position:fixed;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;z-index:50;padding:14px}.modal.hide{display:none}.filedrop{position:relative;border:2px dashed #9db5d4;border-radius:14px;padding:14px;text-align:center;background:#f8fbff;cursor:pointer;min-height:88px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}.filedrop:hover{border-color:#1d63b8}.filedrop input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;margin:0}.filename{font-weight:700;margin-top:8px;word-break:break-word;color:#173052}.filename{font-weight:700;margin-top:8px;word-break:break-word}.focusbox{background:#f8f7ff;border:1px solid #ddd5ff;border-radius:14px;padding:14px;margin-top:12px}.microblock{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;margin:9px 0}.timer{font-size:28px;font-weight:800;text-align:center;padding:10px}.focusactive{outline:3px solid #b8a9ff}.modalbox{background:#fff;border-radius:18px;max-width:760px;width:100%;max-height:92vh;overflow:auto;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.25)}.iconbtn{border:0;background:#eef2f7;border-radius:10px;padding:8px 11px;cursor:pointer}.quizq{border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0}.quizq h4{margin:0 0 10px}.option{display:block;border:1px solid #dce4ee;border-radius:10px;padding:10px;margin:7px 0;cursor:pointer}.option input{margin-right:8px}.resultgood{background:#e8f7ef;border:1px solid #bfe5d2;border-radius:12px;padding:12px;margin-top:12px}.resultbad{background:#fff1f1;border:1px solid #f0caca;border-radius:12px;padding:12px;margin-top:12px}.lessonbox{white-space:pre-wrap;line-height:1.65}.answer{white-space:pre-wrap;line-height:1.6}
-/* Mobile/tablet stability */
-button,a,select,input,textarea{touch-action:manipulation}
-select{min-height:44px;background:#fff}
-.btn,.complete,.iconbtn{min-height:42px}
-@media(max-width:600px){
-  body{font-size:15px;overflow-x:hidden}
-  header{padding:12px 14px;display:block}
-  .brand{gap:8px}.cap{font-size:30px}.brand h1{font-size:21px}.brand p{font-size:12px}
-  .pills{margin-top:8px}.pill{padding:7px 9px;font-size:11px}
-  main{padding:8px;max-width:100%;overflow:hidden}
-  .hero{display:block;padding:13px}.hero h2{font-size:19px}
-  .metrics{padding:8px;gap:5px}.metric{padding:6px 2px}.metric b{font-size:18px}.metric span{font-size:10px}
-  .grid2,.grid3{display:block}
-  .card{padding:13px;margin-bottom:10px;border-radius:13px}
-  .card h3{font-size:17px}
-  .actions{flex-wrap:wrap}.actions .btn,.actions a{flex:1 1 120px;text-align:center}
-  .nextitem .actions .btn{flex:1 1 0}
-  .topicrow{flex-wrap:wrap}.topicrow b{min-width:55%;font-size:13px}.topicrow .btn{margin-left:auto}
-  .discipline-head{align-items:flex-start}
-  .modal{padding:6px}.modalbox{max-height:96vh;padding:13px;border-radius:14px}
-  .quizq{padding:11px}.option{padding:12px 9px}
-  .filedrop{min-height:105px;padding:15px}
-  .filedrop strong{font-size:16px}
-  .microblock{padding:11px}
-  .timer{font-size:26px}
-}
+header{background:linear-gradient(110deg,#082b59,#174d96);color:#fff;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:15px}.brand{display:flex;align-items:center;gap:10px}.cap{font-size:34px}.brand h1{margin:0;font-size:25px}.brand p{margin:2px 0 0;opacity:.88;font-size:12px}.pills{display:flex;gap:8px}.pill{padding:8px 11px;border-radius:999px;background:#ffffff18;border:1px solid #ffffff22;font-size:12px}.online{background:#0c9f68}
+main{max-width:1000px;width:100%;margin:auto;padding:12px}.hero{background:linear-gradient(105deg,#eaf3ff,#fff);border:1px solid #d8e6fa;border-radius:16px;padding:16px;margin-bottom:10px}.hero h2{margin:0 0 5px;font-size:21px}.hero p{margin:0;color:#52647d}.card{background:#fff;border:1px solid var(--line);border-radius:15px;padding:15px;margin-bottom:10px}.card h3{margin:0 0 9px;font-size:18px}.sub{font-size:12px;color:var(--muted)}
+.metrics{display:grid;grid-template-columns:repeat(5,1fr);background:#fff;border:1px solid var(--line);border-radius:15px;padding:9px;margin-bottom:10px}.metric{text-align:center;border-right:1px solid var(--line);padding:4px}.metric:last-child{border:0}.metric b{display:block;font-size:19px}.metric span{font-size:11px;color:var(--muted)}
+.chat{background:#f4f7fb;padding:12px;border-radius:12px;min-height:82px}.quick{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.quick button{border:1px solid #d5e0ef;background:#fff;border-radius:8px;padding:8px;cursor:pointer;color:#173052}.actions{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}.btn{border:0;border-radius:9px;background:var(--navy);color:#fff;padding:10px 12px;cursor:pointer;min-height:42px}.btn.light{background:#edf2f8;color:#173052}.btn.purple{background:#7255d6}.btn.green{background:#159c66}textarea,input,select{width:100%;padding:10px;border:1px solid #cfd9e7;border-radius:9px;font-size:15px;margin:5px 0 8px}textarea{resize:vertical}.answer{white-space:pre-wrap;line-height:1.6;background:#f7f9fc;border-radius:10px;padding:12px;margin-top:8px}
+.filedrop{position:relative;border:2px dashed #9db5d4;border-radius:14px;padding:15px;text-align:center;background:#f8fbff;cursor:pointer;min-height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}.filedrop input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;margin:0}.filename{font-weight:700;margin-top:7px;word-break:break-word;color:#173052}.currentpdf{background:#f7faff;border:1px solid #d7e5f7;border-radius:12px;padding:12px;margin-top:10px}.currentpdf b{word-break:break-word}
+.toolgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}.tool{background:#f8faff;border:1px solid #dce6f2;border-radius:12px;padding:12px}.tool h4{margin:0 0 5px}.progress{font-size:32px;font-weight:800;color:var(--green)}.list{line-height:1.8}.small{font-size:13px}.bar{height:10px;background:#e8eef6;border-radius:999px;overflow:hidden}.bar>span{display:block;height:100%;background:var(--green);border-radius:999px}.focusbox{background:#f8f7ff;border:1px solid #ddd5ff;border-radius:14px;padding:12px;margin-top:10px}.microblock{background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px;margin:8px 0}.timer{font-size:28px;font-weight:800;text-align:center;padding:8px}.focusactive{outline:3px solid #b8a9ff}.tag{display:inline-block;background:#edf4ff;color:#315b8e;border-radius:999px;padding:4px 8px;font-size:11px;margin:2px}.resultgood{background:#e8f7ef;border:1px solid #bfe5d2;border-radius:12px;padding:12px;margin-top:10px}.resultbad{background:#fff1f1;border:1px solid #f0caca;border-radius:12px;padding:12px;margin-top:10px}.modal{position:fixed;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;z-index:50;padding:8px}.modal.hide{display:none}.modalbox{background:#fff;border-radius:18px;max-width:760px;width:100%;max-height:94vh;overflow:auto;padding:16px;box-shadow:0 20px 60px rgba(0,0,0,.25)}.iconbtn{border:0;background:#eef2f7;border-radius:10px;padding:8px 11px;cursor:pointer}.quizq{border:1px solid var(--line);border-radius:14px;padding:12px;margin:10px 0}.quizq h4{margin:0 0 8px}.option{display:block;border:1px solid #dce4ee;border-radius:10px;padding:10px;margin:6px 0;cursor:pointer}.option input{margin-right:7px}.lessonbox{white-space:pre-wrap;line-height:1.65}
+@media(max-width:700px){header{padding:12px 14px;display:block}.brand h1{font-size:21px}.pills{margin-top:7px}.metrics{grid-template-columns:repeat(2,1fr);gap:4px}.metric{border:0}.metric:last-child{grid-column:1/-1}.toolgrid{grid-template-columns:1fr}.card{padding:13px}.hero{padding:13px}.actions .btn{flex:1 1 130px}.quick button{flex:1 1 120px}.modalbox{max-height:96vh;padding:12px}}
 </style></head><body>
-<header><div class="brand"><div class="cap">🎓</div><div><h1>Professor MD 4.6</h1><p>Seu professor particular para preparação FUMARC — TRT-MG</p></div></div><div class="pills"><div id="online" class="pill online">● Sistema online</div><div id="ai" class="pill">OpenAI</div></div></header>
-<div class="layout"><nav>
-<div class="navbtn active">🏠 Início</div><div class="navbtn">🗓️ Meu Plano</div><div class="navbtn">🤖 Professor</div><div class="navbtn">📄 PDFs</div><div class="navbtn">📝 Questões</div><div class="navbtn">📈 Desempenho</div><div class="navbtn">🔄 Revisões</div><div class="navbtn">📕 Erros e Caderno</div><div class="navbtn">⚙️ Configurações</div>
-<div class="goal">🎯<br><b>Disciplina hoje,<br>resultado amanhã!</b><br><br>TRT-MG • FUMARC</div></nav>
+<header><div class="brand"><div class="cap">🎓</div><div><h1>Professor MD 5.0</h1><p>Um PDF por vez • revisão ativa • questões • mapa mental</p></div></div><div class="pills"><div id="online" class="pill online">● Sistema online</div><div id="ai" class="pill">OpenAI</div></div></header>
 <main>
-<section class="hero"><div><h2>Olá, Michael! 👋</h2><p>Vamos juntos rumo à sua aprovação no TRT-MG.</p></div><div class="sub">“O sucesso é a soma de pequenos esforços repetidos todos os dias.” 🎯</div></section>
-<section class="metrics">
-<div class="metric"><b id="hours">0h</b><span>Horas estudadas</span></div><div class="metric"><b id="qs">0</b><span>Questões resolvidas</span></div><div class="metric"><b id="correct">0</b><span>Acertos</span></div><div class="metric"><b id="score">0%</b><span>Aproveitamento</span></div><div class="metric"><b id="weak">0</b><span>Assuntos fracos</span></div><div class="metric"><b id="matcount">0</b><span>PDFs enviados</span></div>
-</section>
-<div class="grid2">
+<section class="hero"><h2>Olá, Michael! 👋</h2><p>Vamos estudar <b>um PDF por vez</b>, sem excesso de informação na tela.</p></section>
+<section class="metrics"><div class="metric"><b id="hours">0h</b><span>Horas</span></div><div class="metric"><b id="qs">0</b><span>Questões</span></div><div class="metric"><b id="correct">0</b><span>Acertos</span></div><div class="metric"><b id="score">0%</b><span>Aproveitamento</span></div><div class="metric"><b id="weak">0</b><span>Assuntos fracos</span></div></section>
 
-<section class="card"><h3>🤖 Fale com o Professor MD</h3><div class="sub">Tire dúvidas, peça explicações e faça exercícios sobre seus PDFs.</div>
-<div id="chat" class="chat">Olá! 👋<br>Estou pronto para ajudar. Envie uma pergunta sobre seu material.</div>
-<div class="quick"><button onclick="quick('Explique o conteúdo do meu PDF de forma didática.')">💡 Explicar conteúdo</button><button onclick="quick('Crie 5 questões originais inspiradas no estilo FUMARC sobre o conteúdo do meu PDF.')">📝 Gerar questões</button><button onclick="quick('Faça uma revisão ativa do conteúdo do meu PDF.')">🔄 Revisar</button><button onclick="voice()">🎤 Falar</button></div>
-<textarea id="question" rows="3" placeholder="Digite sua pergunta..."></textarea><div class="actions"><button class="btn" onclick="ask()">Enviar</button><button class="btn light" onclick="voice()">🎙️ Falar</button></div></section>
-</div>
+<section class="card"><h3>📄 PDF de estudo atual</h3><div class="sub">Envie um PDF e trabalhe somente nele. O PDF anterior continua preservado no armazenamento, mas não aparece na tela.</div>
+<div class="filedrop" id="fileDrop">📄 <strong>Toque aqui para escolher o PDF</strong><span class="sub">Android / tablet • somente PDF • até 25 MB</span><input id="pdf" type="file" accept=".pdf,application/pdf"><div id="selectedFile" class="filename">Nenhum arquivo escolhido</div></div>
+<input id="subject" placeholder="Disciplina (opcional)"><input id="topic" placeholder="Assunto do PDF (opcional)"><button id="uploadBtn" class="btn" onclick="upload()">Enviar PDF para estudo</button><p id="up" class="sub"></p>
+<div id="currentPdf" class="currentpdf"><span class="sub">Nenhum PDF carregado.</span></div>
+<div class="toolgrid" style="margin-top:10px"><div class="tool"><h4>🧠 Mapa mental</h4><div class="sub">1 página, 6 balões, visão completa para revisar sem abrir outras páginas.</div><button class="btn light" onclick="generatePDF('mindmap')">Gerar mapa mental</button></div><div class="tool"><h4>🃏 Flashcards</h4><div class="sub">Cards objetivos e baseados somente no PDF atual.</div><button class="btn light" onclick="generatePDF('flashcards')">Gerar flashcards</button></div><div class="tool"><h4>📝 Questões</h4><div class="sub">Questões no próprio site. Erros vão automaticamente para o Caderno.</div><button class="btn" onclick="generateQuestions()">Gerar questões</button></div></div><p id="genStatus" class="sub"></p></section>
 
-<div class="grid3">
-<section class="card"><h3>📚 Minha biblioteca de PDFs</h3><div id="libraryInfo" class="sub">Carregando biblioteca...</div><div id="materials" class="small">Nenhum PDF.</div><hr><div class="filedrop" id="fileDrop">📄 <strong>Toque para escolher o PDF</strong><span class="sub">Android / tablet • somente PDF • até 25 MB</span><input id="pdf" type="file" accept=".pdf,application/pdf" onchange="showSelectedFile()"><div id="selectedFile" class="filename">Nenhum arquivo escolhido</div></div><input id="subject" placeholder="Disciplina (ex.: Contabilidade Geral)"><input id="topic" placeholder="Assunto"><button id="uploadBtn" class="btn" onclick="upload()">Enviar novo PDF</button><p id="up" class="sub"></p><hr><h4>🧠 Gerar material de revisão</h4><p class="sub">Escolha um PDF processado e gere um arquivo PDF pronto para estudar.</p><label class="sub" for="genMaterial">PDF para gerar material</label><select id="genMaterial" onchange="syncMaterialSelection(this.value)"></select><div id="genMaterialStatus" class="sub"></div><div class="actions"><button class="btn light" onclick="generatePDF('mindmap')">🧠 Mapa mental PDF</button><button class="btn light" onclick="generatePDF('flashcards')">🃏 Flashcards PDF</button><button class="btn" onclick="generateQuestions()">📝 Gerar questões</button></div><p id="genStatus" class="sub"></p></section>
-<section class="card"><h3>🧠 Modo Foco & Memorização</h3><p class="sub">Para PDFs longos: transforme o material em pequenos blocos, estude uma coisa por vez e faça recordação ativa antes de avançar.</p><label class="sub" for="focusMaterial">PDF para estudar no Modo Foco</label><select id="focusMaterial" onchange="syncMaterialSelection(this.value)"></select><div id="focusMaterialStatus" class="sub"></div><div class="actions"><button class="btn purple" onclick="buildFocusPlan()">🧩 Quebrar em micro-blocos</button><button class="btn light" onclick="startFocusTimer(15)">⏱️ 15 min</button><button class="btn light" onclick="startFocusTimer(25)">⏱️ 25 min</button></div><div id="focusTimer" class="timer">15:00</div><div id="focusPlan" class="focusbox"><span class="sub">Escolha um PDF pronto para criar seu plano de memorização.</span></div></section>
-<section class="card"><h3>📝 Registrar estudo</h3><input id="disc" value="Contabilidade Geral"><input id="top" value="Ativo Imobilizado"><input id="mins" type="number" value="60" placeholder="Minutos"><input id="nq" type="number" value="10" placeholder="Questões resolvidas"><input id="nc" type="number" value="8" placeholder="Acertos"><textarea id="notes" rows="2" placeholder="Observações / pontos fracos"></textarea><button class="btn" onclick="save()">Salvar sessão</button></section>
-<section class="card"><h3>📊 Seu progresso</h3><div class="progress" id="bigscore">0%</div><p class="sub">Média geral</p><div class="list small">⏱️ <span id="ph">0h</span> estudadas<br>📝 <span id="pq">0</span> questões<br>✅ <span id="pc">0</span> acertos<br>⚠️ <span id="pe">0</span> assuntos fracos</div><hr><b>Próximas revisões</b><div class="small">R0 — Hoje<br>R1 — Amanhã<br>R7 — +7 dias<br>R30 — +30 dias</div></section>
-</div>
-<section class="card"><h3>📕 Caderno de Erros</h3><div class="grid2"><div><input id="edisc" value="Contabilidade Geral"><input id="etopic" placeholder="Assunto do erro"><textarea id="emistake" placeholder="O que eu errei?"></textarea></div><div><textarea id="eaction" placeholder="Como vou corrigir?"></textarea><input id="edate" type="date"><button class="btn" onclick="saveError()">Registrar erro e revisão</button></div></div><div id="errors" class="small"></div></section><section class="card"><h3>🎯 Seu cronograma <span class="sub" id="todaydate"></span></h3><div class="sub">O Professor MD segue a ordem do edital e libera os próximos assuntos conforme você avança.</div><div style="margin:14px 0"><div class="discipline-head"><b>Progresso do edital</b><b id="planpct">0%</b></div><div class="bar"><span id="planbar" style="width:0%"></span></div><p class="sub" id="plantxt">0 de 0 assuntos concluídos</p></div><h4 style="margin-bottom:8px">🔜 Próximos 5 assuntos</h4><div id="next5"></div><div class="card" style="background:#f7f9fd;margin:12px 0 0"><b>🔄 Revisões de hoje</b><div id="reviews" class="small">Nenhuma revisão pendente.</div></div></section><section class="card planwide"><div class="discipline-head"><div><h3 style="margin-bottom:4px">📚 Cronograma completo do edital</h3><div class="sub">Todos os assuntos previstos para o cargo de Analista Judiciário — Especialidade Contabilidade.</div></div><button class="btn light" onclick="loadPlan()">↻ Atualizar</button></div><div id="fullplan" style="margin-top:12px">Carregando cronograma...</div></section>
-<div id="lessonModal" class="modal hide"><div class="modalbox"><div class="discipline-head"><div><h3>🎓 Aula do Professor MD</h3><div class="sub" id="lessonMeta">Preparando...</div></div><button class="iconbtn" onclick="closeLesson()">✕</button></div><div id="lessonBody" class="lessonbox"><div class="sub">Preparando sua aula...</div></div></div></div>
-<div id="quizModal" class="modal hide"><div class="modalbox"><div class="discipline-head"><div><h3>📝 Questões do Professor MD</h3><div class="sub" id="quizMeta">Baseadas no PDF selecionado</div></div><button class="iconbtn" onclick="closeQuiz()">✕</button></div><div id="quizBody"></div><div class="actions" style="justify-content:flex-end"><button class="btn light" onclick="closeQuiz()">Fechar</button><button id="gradeBtn" class="btn" onclick="submitQuiz()">Finalizar e corrigir</button></div><div id="quizResult"></div></div></div>
+<section class="card"><h3>🤖 Fale com o Professor MD</h3><div class="sub">Tire dúvidas sobre o <b>PDF atual</b>. Você pode falar e ouvir a resposta.</div><div id="chat" class="chat">Olá! 👋<br>Estou pronto para ajudar com o PDF atual.</div><div class="quick"><button onclick="quick('Explique o conteúdo do PDF atual de forma didática.')">💡 Explicar</button><button onclick="quick('Faça uma revisão ativa do PDF atual.')">🔄 Revisar</button><button onclick="voice()">🎤 Falar</button></div><textarea id="question" rows="3" placeholder="Digite sua pergunta..."></textarea><div class="actions"><button class="btn" onclick="ask()">Enviar</button><button class="btn light" onclick="voice()">🎙️ Falar</button></div></section>
+
+<section class="card"><h3>🧠 Modo Foco & Memorização</h3><div class="sub">O PDF atual é quebrado em micro-blocos de 8–15 minutos, com recordação ativa e checkpoints.</div><div id="focusMaterialStatus" class="currentpdf">Nenhum PDF pronto para o Modo Foco.</div><div class="actions"><button class="btn purple" onclick="buildFocusPlan()">🧩 Quebrar em micro-blocos</button><button class="btn light" onclick="startFocusTimer(15)">⏱️ 15 min</button><button class="btn light" onclick="startFocusTimer(25)">⏱️ 25 min</button></div><div id="focusTimer" class="timer">15:00</div><div id="focusPlan" class="focusbox"><span class="sub">Envie e processe um PDF para começar.</span></div></section>
+
+<section class="card"><h3>📊 Seu progresso</h3><div class="progress" id="bigscore">0%</div><p class="sub">Aproveitamento nas questões respondidas</p><div class="list small">⏱️ <span id="ph">0h</span> estudadas<br>📝 <span id="pq">0</span> questões<br>✅ <span id="pc">0</span> acertos<br>⚠️ <span id="pe">0</span> assuntos fracos</div><hr><b>Revisões espaçadas</b><div class="small">R0 — hoje • R1 — amanhã • R7 — +7 dias • R30 — +30 dias</div></section>
+
+<section class="card"><h3>📕 Caderno de Erros</h3><div class="sub">Erros das questões são enviados automaticamente para cá. Você também pode registrar um ponto fraco manualmente.</div><input id="edisc" value="Contabilidade Geral"><input id="etopic" placeholder="Assunto do erro"><textarea id="emistake" placeholder="O que eu errei?"></textarea><textarea id="eaction" placeholder="Como vou corrigir?"></textarea><input id="edate" type="date"><button class="btn" onclick="saveError()">Registrar erro e revisão</button><div id="errors" class="small" style="margin-top:10px"></div></section>
+
 <section class="card"><h3>⚙️ Configurações</h3><div class="small">Modelo: <b id="model">—</b> &nbsp; | &nbsp; OpenAI: <b id="aistatus">—</b> &nbsp; | &nbsp; File Search: <b id="vsstatus">—</b></div><p class="sub">A chave da OpenAI fica no Render, nunca nesta página.</p></section>
-</main></div>
+</main>
+<div id="quizModal" class="modal hide"><div class="modalbox"><div class="discipline-head" style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div><h3>📝 Questões do Professor MD</h3><div class="sub" id="quizMeta">Baseadas no PDF atual</div></div><button class="iconbtn" onclick="closeQuiz()">✕</button></div><div id="quizBody"></div><div class="actions" style="justify-content:flex-end"><button class="btn light" onclick="closeQuiz()">Fechar</button><button id="gradeBtn" class="btn" onclick="submitQuiz()">Finalizar e corrigir</button></div><div id="quizResult"></div></div></div>
 <script>
-const $=id=>document.getElementById(id);
+const $=id=>document.getElementById(id);let currentMaterial=null,uploadPollTimer=null,focusTimerId=null,focusSeconds=900;
 async function api(u,o){let r=await fetch(u,o),d=await r.json();if(!r.ok)throw Error(d.error||'Erro');return d}
-function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
-async function load(){
- try{let[s,d,t,m,p]=await Promise.all([api('/api/status'),api('/api/dashboard'),api('/api/today'),api('/api/materials'),api('/api/plan')]);
- $('ai').textContent=s.openai_configured?'◉ OpenAI conectada':'◉ OpenAI não configurada';$('aistatus').textContent=s.openai_configured?'Configurada':'Pendente';$('vsstatus').textContent=s.file_search_configured?'Ativo':'Será criado no primeiro PDF';$('model').textContent=s.model; $('libraryInfo').innerHTML=s.library_persistent?'🔒 <b>Biblioteca permanente ativa.</b> Seus PDFs ficam no armazenamento externo e podem continuar disponíveis após reinícios e novos deploys.':'⚠️ <b>Biblioteca local.</b> Para manter os PDFs após reinícios/deploys, configure o armazenamento permanente no Render.';
- $('hours').textContent=d.hours+'h';$('qs').textContent=d.questions;$('correct').textContent=d.correct;$('score').textContent=d.score+'%';$('weak').textContent=d.weak_topics;$('matcount').textContent=m.items.length;
- $('bigscore').textContent=d.score+'%';$('ph').textContent=d.hours+'h';$('pq').textContent=d.questions;$('pc').textContent=d.correct;$('pe').textContent=d.weak_topics;$('todaydate').textContent='— '+t.date;$('planpct').textContent=p.pct+'%';$('planbar').style.width=p.pct+'%';$('plantxt').textContent=p.completed+' de '+p.total+' assuntos concluídos';renderPlan(p);
-
- $('reviews').innerHTML=t.reviews.length?t.reviews.map(x=>`<div class="topicrow"><span class="check">🔔</span><b>${esc(x.topic)}</b><span class="mini">${esc(x.review_type)} • ${esc(x.review_date)}</span><button class="complete" onclick="completeReview(${x.id})">OK</button></div>`).join(''):'Nenhuma revisão pendente.';
- $('materials').innerHTML=m.items.length?m.items.slice(0,12).map(x=>{const proc=!x.openai_file_id||x.processing_status==='needs_processing'||x.processing_status==='error'; return '📄 <b>'+esc(x.filename)+'</b><br><span class="sub">'+esc(x.subject||'')+' • '+esc(x.topic||'')+'</span><br>'+materialStatusLabel(x)+'<div class="actions"><a class="btn light" href="/api/materials/'+x.id+'/file" target="_blank">Abrir PDF</a>'+(proc?'<button class="btn light" onclick="processMaterial('+x.id+')">🤖 Processar com IA</button>':'')+'</div><hr>'}).join(''):'Nenhum PDF enviado.';
- const ready=m.items.filter(x=>x.processing_status==='ready' && x.openai_file_id);
- const options=m.items.length?m.items.map(x=>`<option value="${x.id}">${esc(x.filename)} — ${esc(x.processing_status==='ready'?'Pronto':x.processing_status==='needs_processing'?'Precisa processar':x.processing_status==='processing'?'Processando':x.processing_status==='queued'?'Aguardando':'Erro')}</option>`).join(''):'<option value="">Nenhum PDF na biblioteca</option>';
- $('genMaterial').innerHTML=options; $('focusMaterial').innerHTML=options;
- if(ready.length){ $('genMaterial').value=String(ready[0].id); $('focusMaterial').value=String(ready[0].id); }
- $('genMaterialStatus').textContent=ready.length?`✅ ${ready.length} PDF(s) pronto(s) para gerar material.`:'⏳ Nenhum PDF pronto ainda. Aguarde o processamento.';
- $('focusMaterialStatus').textContent=ready.length?`✅ ${ready.length} PDF(s) disponível(is) para o Modo Foco.`:'⏳ Aguarde um PDF ficar pronto para usar o Modo Foco.';
- $('errors').innerHTML=d.errors.length?d.errors.slice(0,8).map(x=>'⚠️ <b>'+esc(x.topic)+'</b> — revisão '+esc(x.review_date||'a definir')).join('<br>'):'Nenhum erro registrado ainda.';
- }catch(e){$('online').textContent='● Sistema: verifique o servidor';console.log(e)}
-}
-
-function statusLabel(st){return st==='completed'?'Concluído':st==='current'?'Em estudo':'Pendente'}
-function priorityLabel(p){return p==='A'?'Alta':p==='B'?'Média':'Complementar'}
-function renderPlan(p){
-  $('next5').innerHTML=p.next5.map((x,i)=>`<div class="nextitem ${x.status==='current'?'current':''}"><div class="discipline-head"><div><span class="mini">${i+1}º • Semana ${x.week} • Dia ${x.day}</span><br><b>${esc(x.discipline)}</b><br><span class="tag ${x.priority==='A'?'tagA':x.priority==='B'?'tagB':''}">${esc(priorityLabel(x.priority))}</span> <span class="tag">${esc(x.topic)}</span></div><span class="statuspill ${x.status==='current'?'current':''}">${statusLabel(x.status)}</span></div><div class="actions"><button class="btn light" onclick="lesson(${x.id})">▶️ Ver aula</button>${x.status!=='completed'?`<button class="complete" onclick="completeTopic(${x.id})">✅ Dar OK</button>`:''}</div></div>`).join('') || '<div class="sub">Cronograma concluído. 🎉</div>';
-  $('fullplan').innerHTML=p.groups.map(g=>`<details open><summary><div class="discipline-head"><b>${esc(g.discipline)}</b><span>${g.completed}/${g.total} • ${g.pct}%</span></div><div class="bar" style="margin:8px 0"><span style="width:${g.pct}%"></span></div></summary><div style="padding:4px 4px 8px">${g.items.map(x=>`<div class="topicrow ${x.status==='current'?'current':''}"><span class="check">${x.status==='completed'?'✅':x.status==='current'?'🟢':'⚪'}</span><b>${x.order_no}. ${esc(x.topic)}</b><span class="statuspill ${x.status==='completed'?'done':x.status==='current'?'current':''}">${statusLabel(x.status)}</span><button class="btn light" onclick="lesson(${x.id})">Aula</button></div>`).join('')}</div></details>`).join('');
-}
-async function loadPlan(){try{const p=await api('/api/plan');$('planpct').textContent=p.pct+'%';$('planbar').style.width=p.pct+'%';$('plantxt').textContent=p.completed+' de '+p.total+' assuntos concluídos';renderPlan(p)}catch(e){$('fullplan').textContent='Erro ao carregar cronograma: '+e.message}}
-async function completeTopic(id){
-  if(!confirm('Marcar este assunto como estudado e concluído?')) return;
-  try{const fd=new URLSearchParams({topic_id:id,minutes:60,questions:0,correct:0});await api('/api/plan/complete',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:fd});await load();alert('✅ Assunto concluído! O próximo já foi liberado e as revisões foram programadas.')}catch(e){alert('Erro: '+e.message)}
-}
-async function lesson(id){
-  $('lessonModal').classList.remove('hide');
-  $('lessonBody').innerHTML='<div class="sub">🎓 Preparando sua aula com base no PDF associado...<br>Isso pode levar alguns segundos.</div>';
-  $('lessonMeta').textContent='Carregando conteúdo do cronograma';
-  try{
-    const fd=new URLSearchParams({topic_id:id});
-    const d=await api('/api/lesson',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:fd});
-    $('lessonMeta').textContent=(d.material?'Fonte: '+d.material:'Fonte: PDF associado');
-    $('lessonBody').innerHTML='<b>📚 '+esc(d.topic||'Aula')+'</b><hr><div class="answer">'+esc(d.answer||'Não foi possível montar a aula.')+'</div>';
-    if(d.answer) speak(d.answer);
-  }catch(e){
-    $('lessonBody').innerHTML='<div class="resultbad">❌ '+esc(e.message)+'</div>';
-  }
-}
-function closeLesson(){ $('lessonModal').classList.add('hide'); }
-
-async function generateQuestions(){
-  const id=$('genMaterial').value; if(!id)return alert('Primeiro escolha um PDF processado.');
-  $('genStatus').textContent='🤖 Gerando questões com base exclusivamente no PDF...';
-  try{const fd=new URLSearchParams({material_id:id,count:5});const d=await api('/api/questions/generate',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:fd});window.currentQuiz=d; $('quizMeta').textContent='Fonte: '+d.material+' • '+d.count+' questões'; $('quizBody').innerHTML=d.questions.map((q,i)=>`<div class="quizq"><h4>${i+1}. ${esc(q.question)}</h4>${q.options.map((op,j)=>`<label class="option"><input type="radio" name="q${q.id}" value="${j}"> ${String.fromCharCode(65+j)}) ${esc(op)}</label>`).join('')}</div>`).join('');$('quizResult').innerHTML='';$('gradeBtn').disabled=false;$('quizModal').classList.remove('hide');$('genStatus').textContent='';}
-  catch(e){$('genStatus').textContent='❌ Não foi possível gerar: '+e.message}
-}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function materialStatusLabel(x){const st=x?.processing_status||'ready';if(st==='queued')return '⏳ Recebido — aguardando processamento';if(st==='processing')return '🔄 Processando PDF com a IA...';if(st==='needs_processing')return '🟠 Salvo — clique em Processar com IA';if(st==='error')return '❌ Erro: '+(x.processing_error||'falha no processamento');if(st==='archived')return '📚 Pronto';return '✅ Pronto para estudar';}
+function renderCurrent(x){currentMaterial=x||null;const box=$('currentPdf');const focus=$('focusMaterialStatus');if(!x){box.innerHTML='<span class="sub">Nenhum PDF carregado.</span>';focus.textContent='Nenhum PDF pronto para o Modo Foco.';return}const ready=x.processing_status==='ready'&&x.openai_file_id;box.innerHTML='<b>📄 '+esc(x.filename)+'</b><br><span class="sub">'+esc(x.subject||'')+(x.subject&&x.topic?' • ':'')+esc(x.topic||'')+'</span><br><span class="sub">'+esc(materialStatusLabel(x))+'</span><div class="actions"><a class="btn light" href="/api/materials/'+x.id+'/file" target="_blank">Abrir PDF</a>'+(ready?'':'<button class="btn light" onclick="processMaterial('+x.id+')">🤖 Processar com IA</button>')+'</div>';focus.innerHTML=ready?'✅ <b>'+esc(x.filename)+'</b> está pronto. O Modo Foco usará somente este PDF.':'⏳ '+esc(materialStatusLabel(x));}
+async function load(){try{const[s,d,m]=await Promise.all([api('/api/status'),api('/api/dashboard'),api('/api/current-material')]);$('ai').textContent=s.openai_configured?'◉ OpenAI conectada':'◉ OpenAI não configurada';$('aistatus').textContent=s.openai_configured?'Configurada':'Pendente';$('vsstatus').textContent=s.file_search_configured?'Ativo':'Será criado no primeiro PDF';$('model').textContent=s.model;$('hours').textContent=d.hours+'h';$('qs').textContent=d.questions;$('correct').textContent=d.correct;$('score').textContent=d.score+'%';$('weak').textContent=d.weak_topics;$('bigscore').textContent=d.score+'%';$('ph').textContent=d.hours+'h';$('pq').textContent=d.questions;$('pc').textContent=d.correct;$('pe').textContent=d.weak_topics;$('errors').innerHTML=d.errors.length?d.errors.slice(0,8).map(x=>'⚠️ <b>'+esc(x.topic)+'</b> — revisão '+esc(x.review_date||'a definir')).join('<br>'):'Nenhum erro registrado ainda.';renderCurrent(m.item)}catch(e){$('online').textContent='● Verifique o servidor';console.log(e)}}
+async function processMaterial(id){try{const d=await api('/api/materials/'+id+'/process',{method:'POST'});$('up').textContent='🔄 '+(d.message||'Processamento iniciado.');pollMaterial(id)}catch(e){$('up').textContent='❌ '+e.message}}
+async function pollMaterial(id){if(uploadPollTimer)clearInterval(uploadPollTimer);let tries=0;const tick=async()=>{tries++;try{const d=await api('/api/materials/'+id);const x=d.item;renderCurrent(x);if(x.processing_status==='ready'){ $('up').textContent='✅ PDF pronto para estudar.';clearInterval(uploadPollTimer);uploadPollTimer=null;return}if(x.processing_status==='error'){ $('up').textContent='❌ O processamento falhou: '+(x.processing_error||'erro desconhecido');clearInterval(uploadPollTimer);uploadPollTimer=null;return}$('up').textContent=x.processing_status==='processing'?'🔄 Processando PDF...':'⏳ Aguardando processamento...';if(tries>=120){$('up').textContent='⏳ O processamento continua no servidor. Verifique novamente em alguns minutos.';clearInterval(uploadPollTimer);uploadPollTimer=null}}catch(e){if(tries>=10){$('up').textContent='⚠️ Não foi possível atualizar o status agora.';clearInterval(uploadPollTimer);uploadPollTimer=null}}};await tick();uploadPollTimer=setInterval(tick,3000)}
+function showSelectedFile(){const f=$('pdf').files&&$('pdf').files[0];$('selectedFile').textContent=f?'📄 '+f.name+' • '+Math.ceil(f.size/1024/1024*10)/10+' MB':'Nenhum arquivo escolhido';if(f&&!$('topic').value)$('topic').value=f.name.replace(/\.pdf$/i,'').replace(/[_-]+/g,' ')}
+async function upload(){const f=$('pdf').files&&$('pdf').files[0];if(!f)return alert('Escolha um PDF.');if(!f.name.toLowerCase().endsWith('.pdf'))return alert('Escolha um arquivo PDF.');if(f.size>25*1024*1024)return alert('Esse PDF tem mais de 25 MB.');const fd=new FormData();fd.append('file',f);fd.append('subject',$('subject').value);fd.append('topic',$('topic').value);$('uploadBtn').disabled=true;$('uploadBtn').textContent='Enviando...';$('up').textContent='📤 Enviando PDF...';try{const d=await api('/api/upload',{method:'POST',body:fd});$('selectedFile').textContent='📄 '+d.filename+' • enviado';$('up').textContent='✅ PDF recebido. Agora aguarde o processamento.';if(d.id)pollMaterial(d.id);else load()}catch(e){$('up').textContent='❌ Erro no envio: '+e.message}finally{$('uploadBtn').disabled=false;$('uploadBtn').textContent='Enviar PDF para estudo'}}
+async function generatePDF(kind){if(!currentMaterial)return alert('Primeiro envie um PDF.');if(!(currentMaterial.processing_status==='ready'&&currentMaterial.openai_file_id))return alert('Aguarde o PDF ficar pronto para a IA.');const label=kind==='mindmap'?'mapa mental de 1 página':'flashcards';$('genStatus').textContent='🤖 Gerando '+label+'...';try{const fd=new URLSearchParams({material_id:currentMaterial.id});const d=await api('/api/generate/'+kind,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:fd});$('genStatus').innerHTML='✅ '+esc(d.filename)+' — <a href="'+d.url+'" target="_blank">Abrir PDF</a>'+(d.count?' • '+d.count+' flashcards':'')}catch(e){$('genStatus').textContent='❌ '+e.message}}
+async function generateQuestions(){if(!currentMaterial)return alert('Primeiro envie um PDF.');if(!(currentMaterial.processing_status==='ready'&&currentMaterial.openai_file_id))return alert('Aguarde o PDF ficar pronto para a IA.');$('genStatus').textContent='🤖 Gerando questões...';try{const fd=new URLSearchParams({material_id:currentMaterial.id,count:5});const d=await api('/api/questions/generate',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:fd});window.currentQuiz=d;$('quizMeta').textContent='Fonte: '+d.material+' • '+d.count+' questões';$('quizBody').innerHTML=d.questions.map((q,i)=>'<div class="quizq"><h4>'+((i+1)+'. '+esc(q.question))+'</h4>'+q.options.map((op,j)=>'<label class="option"><input type="radio" name="q'+q.id+'" value="'+j+'"> '+String.fromCharCode(65+j)+') '+esc(op)+'</label>').join('')+'</div>').join('');$('quizResult').innerHTML='';$('gradeBtn').disabled=false;$('quizModal').classList.remove('hide');$('genStatus').textContent=''}catch(e){$('genStatus').textContent='❌ '+e.message}}
 function closeQuiz(){$('quizModal').classList.add('hide')}
-async function submitQuiz(){
-  if(!window.currentQuiz)return; const answers={}; window.currentQuiz.questions.forEach(q=>{const el=document.querySelector(`input[name="q${q.id}"]:checked`); if(el)answers[q.id]=Number(el.value)});
-  $('gradeBtn').disabled=true;$('quizResult').innerHTML='<div class="sub">Corrigindo...</div>';
-  try{const fd=new URLSearchParams({quiz_id:window.currentQuiz.quiz_id,answers:JSON.stringify(answers)});const d=await api('/api/questions/submit',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:fd});let html=`<div class="${d.score>=70?'resultgood':'resultbad'}"><b>Resultado: ${d.correct}/${d.total} — ${d.score}%</b><br>${d.errors_added?`⚠️ ${d.errors_added} erro(s) foram enviados automaticamente para o Caderno de Erros.`:'🎉 Nenhum erro. Excelente!'}</div>`;if(d.wrong.length)html+=d.wrong.map((w,i)=>`<div class="resultbad"><b>${i+1}. ${esc(w.question)}</b><br>Você marcou: <b>${esc(w.chosen)}</b><br>Correta: <b>${esc(w.correct)}</b><br><span>${esc(w.explanation)}</span></div>`).join('');$('quizResult').innerHTML=html;load();}catch(e){$('quizResult').innerHTML='<div class="resultbad">❌ '+esc(e.message)+'</div>';$('gradeBtn').disabled=false}
-}
-
-async function ask(){let q=$('question').value.trim();if(!q)return;$('chat').textContent='Pensando...';try{let d=await api('/api/ask',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({text:q,mode:'tutor'})});$('chat').innerHTML='<div class="answer">'+esc(d.answer)+'</div>';speak(d.answer)}catch(e){$('chat').textContent='Erro: '+e.message}}
-function quick(q){$('question').value=q;ask()}
-function speak(t){if('speechSynthesis'in window){speechSynthesis.cancel();let u=new SpeechSynthesisUtterance(t);u.lang='pt-BR';speechSynthesis.speak(u)}}
-function voice(){let R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R)return alert('Reconhecimento de voz não disponível neste navegador.');let r=new R();r.lang='pt-BR';r.onresult=e=>{$('question').value=e.results[0][0].transcript;ask()};r.start()}
-function materialStatusLabel(x){
-  const st=x.processing_status||'ready';
-  if(st==='queued') return '⏳ <span class="sub">Recebido — aguardando processamento</span>';
-  if(st==='processing') return '🔄 <span class="sub">Processando em segundo plano...</span>';
-  if(st==='needs_processing') return '🟠 <span class="sub">Salvo na biblioteca — precisa ser processado pela IA</span>';
-  if(st==='error') return '❌ <span class="sub">Erro: '+esc(x.processing_error||'falha no processamento')+'</span>';
-  if(st==='archived') return '📚 <span class="sub">Salvo na biblioteca permanente</span>';
-  return '✅ <span class="sub">Pronto para perguntas</span>';
-}
-
-async function processMaterial(id){
-  try{
-    const d=await api('/api/materials/'+id+'/process',{method:'POST'});
-    $('genStatus').textContent='🔄 '+(d.message||'Processamento iniciado.');
-    load();
-  }catch(e){alert('Não foi possível iniciar o processamento: '+e.message)}
-}
-
-let uploadPollTimer=null;
-async function pollMaterial(id){
-  if(uploadPollTimer) clearInterval(uploadPollTimer);
-  let tries=0;
-  const tick=async()=>{
-    tries++;
-    try{
-      const d=await api('/api/materials/'+id);
-      const x=d.item;
-      if(x.processing_status==='ready'){
-        $('up').textContent='✅ PDF processado e pronto para o Professor MD.';
-        clearInterval(uploadPollTimer); uploadPollTimer=null; load(); return;
-      }
-      if(x.processing_status==='error'){
-        $('up').textContent='❌ O PDF foi recebido, mas o processamento falhou: '+(x.processing_error||'erro desconhecido');
-        clearInterval(uploadPollTimer); uploadPollTimer=null; load(); return;
-      }
-      $('up').textContent=x.processing_status==='processing'?'🔄 Processando PDF em segundo plano...':'⏳ PDF recebido; aguardando processamento...';
-      if(tries>=120){
-        $('up').textContent='⏳ O PDF continua sendo processado. Você pode continuar usando o Professor MD e verificar o status em Meus PDFs.';
-        clearInterval(uploadPollTimer); uploadPollTimer=null; load();
-      }
-    }catch(e){
-      if(tries>=10){$('up').textContent='⚠️ Não foi possível atualizar o status agora. O processamento pode continuar no servidor.';clearInterval(uploadPollTimer);uploadPollTimer=null;}
-    }
-  };
-  await tick();
-  uploadPollTimer=setInterval(tick,3000);
-}
-
-function syncMaterialSelection(id){
-  const a=$('genMaterial'), b=$('focusMaterial');
-  if(id){ a.value=String(id); b.value=String(id); }
-}
-
-async function upload(){
-  let f=$('pdf').files[0];
-  if(!f)return alert('Escolha um PDF.');
-  if(!f.name.toLowerCase().endsWith('.pdf'))return alert('Escolha um arquivo PDF.');
-  if(f.size>25*1024*1024)return alert('Esse PDF tem mais de 25 MB. Escolha um arquivo menor.');
-  let fd=new FormData();fd.append('file',f);fd.append('subject',$('subject').value);fd.append('topic',$('topic').value);
-  $('uploadBtn').disabled=true;$('uploadBtn').textContent='Enviando...';$('up').textContent='📤 Enviando PDF...';
-  try{
-    let d=await api('/api/upload',{method:'POST',body:fd});
-    $('up').innerHTML='✅ '+esc(d.message)+'<br><span class="sub">Agora aguarde o status mudar para <b>Pronto</b> na biblioteca.</span>';
-    $('uploadBtn').disabled=false;$('uploadBtn').textContent='Enviar novo PDF';
-    $('selectedFile').textContent='📄 '+d.filename+' • enviado para a biblioteca';
-    load();
-    if(d.id) pollMaterial(d.id);
-  }catch(e){
-    $('up').textContent='❌ Erro no envio: '+e.message;
-    $('uploadBtn').disabled=false;$('uploadBtn').textContent='Enviar novo PDF';
-  }
-}
-function showSelectedFile(){
-  const f=$('pdf').files && $('pdf').files[0];
-  if(f){
-    $('selectedFile').textContent='📄 '+f.name+' • '+Math.ceil(f.size/1024/1024*10)/10+' MB';
-    if(!$('topic').value) $('topic').value=f.name.replace(/\.pdf$/i,'').replace(/[_-]+/g,' ');
-  }else $('selectedFile').textContent='Nenhum arquivo escolhido';
-}
-
-document.addEventListener('DOMContentLoaded',()=>{
-  const drop=$('fileDrop'), input=$('pdf');
-  if(drop && input){
-    drop.addEventListener('click',(e)=>{ if(e.target!==input) input.click(); });
-    input.addEventListener('change',showSelectedFile);
-  }
-});
-let focusTimerId=null, focusSeconds=900;
-function startFocusTimer(minutes){
-  if(focusTimerId) clearInterval(focusTimerId);
-  focusSeconds=minutes*60; $('focusTimer').textContent=String(minutes).padStart(2,'0')+':00';
-  $('focusTimer').classList.add('focusactive');
-  focusTimerId=setInterval(()=>{focusSeconds--; const m=Math.floor(focusSeconds/60),s=focusSeconds%60; $('focusTimer').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); if(focusSeconds<=0){clearInterval(focusTimerId);focusTimerId=null;$('focusTimer').classList.remove('focusactive');alert('⏰ Bloco concluído! Faça 1 minuto de recordação sem olhar o PDF antes de continuar.');}},1000);
-}
-async function buildFocusPlan(){
-  const id=$('focusMaterial').value; if(!id)return alert('Selecione um PDF na lista.');
-  $('focusPlan').innerHTML='<div class="sub">🧠 Organizando o PDF em micro-blocos de estudo...</div>';
-  try{const fd=new URLSearchParams({material_id:id});const d=await api('/api/focus/plan',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:fd});
-    const blocks=d.plan.microblocks||[];
-    $('focusPlan').innerHTML='<b>🎯 '+esc(d.plan.title||'Plano de memorização')+'</b><div class="sub">Fonte: '+esc(d.material)+'</div>'+blocks.map((b,i)=>`<div class="microblock"><b>${i+1}. ${esc(b.title)}</b><br><span class="tag">${esc(b.minutes||10)} min</span><p><b>Objetivo:</b> ${esc(b.objective)}</p><b>3 pontos-chave</b><ul>${(b.key_points||[]).slice(0,3).map(x=>'<li>'+esc(x)+'</li>').join('')}</ul><p><b>🧠 Recordação ativa:</b> ${esc(b.recall)}</p><p><b>✅ Checkpoint:</b> ${esc(b.checkpoint)}</p><button class="btn light" onclick="startFocusTimer(${Math.min(15,Math.max(8,Number(b.minutes)||10))})">Começar este bloco</button></div>`).join('');
-  }catch(e){$('focusPlan').innerHTML='<div class="resultbad">❌ '+esc(e.message)+'</div>'}
-}
-
-async function generatePDF(kind){
-  const id=$('genMaterial').value;
-  if(!id)return alert('Primeiro envie e aguarde um PDF ficar como “Pronto para perguntas”.');
-  const label=kind==='mindmap'?'mapa mental':'flashcards';
-  $('genStatus').textContent='🤖 Gerando '+label+' com base no PDF...';
-  try{
-    const fd=new URLSearchParams({material_id:id});
-    const d=await api('/api/generate/'+kind,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:fd});
-    $('genStatus').innerHTML='✅ '+esc(d.filename)+' — <a href="'+d.url+'" target="_blank">Abrir PDF</a>'+(d.count?' • '+d.count+' flashcards':'');
-  }catch(e){$('genStatus').textContent='❌ Não foi possível gerar: '+e.message;}
-}
-async function completeReview(id){try{const fd=new URLSearchParams({review_id:id});await api('/api/reviews/complete',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:fd});load()}catch(e){alert(e.message)}}
-async function save(){let fd=new URLSearchParams({discipline:$('disc').value,topic:$('top').value,minutes:$('mins').value,questions:$('nq').value,correct:$('nc').value,notes:$('notes').value});try{let d=await api('/api/session',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:fd});alert('Sessão salva! Aproveitamento: '+d.score+'%');load()}catch(e){alert(e.message)}}
-async function saveError(){let fd=new URLSearchParams({discipline:$('edisc').value,topic:$('etopic').value,mistake:$('emistake').value,action:$('eaction').value,review_date:$('edate').value});try{await api('/api/error',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:fd});alert('Erro registrado e enviado para revisão.');load()}catch(e){alert(e.message)}}
-load();
+async function submitQuiz(){if(!window.currentQuiz)return;const answers={};window.currentQuiz.questions.forEach(q=>{const el=document.querySelector('input[name="q'+q.id+'"]:checked');if(el)answers[q.id]=Number(el.value)});$('gradeBtn').disabled=true;$('quizResult').innerHTML='<div class="sub">Corrigindo...</div>';try{const fd=new URLSearchParams({quiz_id:window.currentQuiz.quiz_id,answers:JSON.stringify(answers)});const d=await api('/api/questions/submit',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:fd});let html='<div class="'+(d.score>=70?'resultgood':'resultbad')+'"><b>Resultado: '+d.correct+'/'+d.total+' — '+d.score+'%</b><br>'+(d.errors_added?'⚠️ '+d.errors_added+' erro(s) foram enviados automaticamente para o Caderno de Erros.':'🎉 Nenhum erro. Excelente!')+'</div>';if(d.wrong.length)html+=d.wrong.map((w,i)=>'<div class="resultbad"><b>'+((i+1)+'. '+esc(w.question))+'</b><br>Você marcou: <b>'+esc(w.chosen)+'</b><br>Correta: <b>'+esc(w.correct)+'</b><br><span>'+esc(w.explanation)+'</span></div>').join('');$('quizResult').innerHTML=html;load()}catch(e){$('quizResult').innerHTML='<div class="resultbad">❌ '+esc(e.message)+'</div>';$('gradeBtn').disabled=false}}
+async function ask(){const q=$('question').value.trim();if(!q)return;$('chat').textContent='Pensando...';try{const d=await api('/api/ask',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({text:q,mode:'tutor'})});$('chat').innerHTML='<div class="answer">'+esc(d.answer)+'</div>';speak(d.answer)}catch(e){$('chat').textContent='❌ '+e.message}}
+function quick(q){$('question').value=q;ask()}function speak(t){if('speechSynthesis'in window){speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='pt-BR';speechSynthesis.speak(u)}}function voice(){const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R)return alert('Reconhecimento de voz não disponível neste navegador.');const r=new R();r.lang='pt-BR';r.onresult=e=>{$('question').value=e.results[0][0].transcript;ask()};r.start()}
+function startFocusTimer(minutes){if(focusTimerId)clearInterval(focusTimerId);focusSeconds=minutes*60;$('focusTimer').textContent=String(minutes).padStart(2,'0')+':00';$('focusTimer').classList.add('focusactive');focusTimerId=setInterval(()=>{focusSeconds--;const m=Math.floor(focusSeconds/60),s=focusSeconds%60;$('focusTimer').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');if(focusSeconds<=0){clearInterval(focusTimerId);focusTimerId=null;$('focusTimer').classList.remove('focusactive');alert('⏰ Bloco concluído! Faça recordação ativa sem olhar o PDF antes de continuar.')}},1000)}
+async function buildFocusPlan(){if(!currentMaterial)return alert('Primeiro envie um PDF.');if(!(currentMaterial.processing_status==='ready'&&currentMaterial.openai_file_id))return alert('Aguarde o PDF ficar pronto para a IA.');$('focusPlan').innerHTML='<div class="sub">🧠 Organizando o PDF em micro-blocos...</div>';try{const fd=new URLSearchParams({material_id:currentMaterial.id});const d=await api('/api/focus/plan',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:fd});const blocks=d.plan.microblocks||[];$('focusPlan').innerHTML='<b>🎯 '+esc(d.plan.title||'Plano de memorização')+'</b><div class="sub">Fonte: '+esc(d.material)+'</div>'+blocks.map((b,i)=>'<div class="microblock"><b>'+(i+1)+'. '+esc(b.title)+'</b><br><span class="tag">'+esc(b.minutes||10)+' min</span><p><b>Objetivo:</b> '+esc(b.objective)+'</p><b>3 pontos-chave</b><ul>'+((b.key_points||[]).slice(0,3).map(x=>'<li>'+esc(x)+'</li>').join(''))+'</ul><p><b>🧠 Recordação ativa:</b> '+esc(b.recall)+'</p><p><b>✅ Checkpoint:</b> '+esc(b.checkpoint)+'</p><button class="btn light" onclick="startFocusTimer('+Math.min(15,Math.max(8,Number(b.minutes)||10))+')">Começar este bloco</button></div>').join('')}catch(e){$('focusPlan').innerHTML='<div class="resultbad">❌ '+esc(e.message)+'</div>'}}
+async function saveError(){const fd=new URLSearchParams({discipline:$('edisc').value,topic:$('etopic').value,mistake:$('emistake').value,action:$('eaction').value,review_date:$('edate').value});try{await api('/api/error',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:fd});alert('Erro registrado e enviado para revisão.');load()}catch(e){alert(e.message)}}
+document.addEventListener('DOMContentLoaded',()=>{const drop=$('fileDrop'),input=$('pdf');if(drop&&input){drop.addEventListener('click',e=>{if(e.target!==input)input.click()});input.addEventListener('change',showSelectedFile)}load()});
 </script></body></html>

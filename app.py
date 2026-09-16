@@ -26,7 +26,7 @@ VECTOR_STORE_ID = os.getenv("OPENAI_VECTOR_STORE_ID", "").strip()
 MAX_PDF_BYTES = 25 * 1024 * 1024
 VS_LOCK = threading.Lock()
 
-app = FastAPI(title="Professor MD", version="4.8")
+app = FastAPI(title="Professor MD", version="5.0")
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_credentials=True,
     allow_methods=["*"], allow_headers=["*"]
@@ -372,7 +372,7 @@ def home():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "app": "Professor MD", "version": "4.9"}
+    return {"status": "ok", "app": "Professor MD", "version": "5.0"}
 
 
 @app.get("/api/status")
@@ -392,24 +392,41 @@ def ai_answer(prompt, context_hint=""):
     key = os.getenv("OPENAI_API_KEY")
     if not key:
         raise RuntimeError("Configure OPENAI_API_KEY no Render antes de usar o Professor.")
-    c = OpenAI(api_key=key)
-    vs = current_vs()
-    tools = [{"type": "file_search", "vector_store_ids": [vs]}] if vs else None
+    c = conn()
+    current = c.execute("SELECT * FROM materials ORDER BY id DESC LIMIT 1").fetchone()
+    c.close()
+    vs = (current["vector_store_id"] if current else None) or current_vs()
+    tools = None
+    if vs:
+        tool = {"type":"file_search","vector_store_ids":[vs],"max_num_results":8}
+        if current and current["openai_file_id"]:
+            tool["filters"]={"type":"eq","key":"material_id","value":str(current["id"])}
+        tools=[tool]
     instructions = """Você é o Professor MD, professor particular para concursos, focado em TRT-MG/FUMARC e Contabilidade.
-Se houver arquivos no File Search, use-os como fonte principal. Não invente páginas, regras ou conteúdo que não esteja disponível.
-Explique em português do Brasil, de forma didática e objetiva.
-Quando apropriado, organize: 1) conceito, 2) exemplo, 3) pegadinha de prova, 4) mini questão, 5) feedback.
+Use EXCLUSIVAMENTE o PDF de estudo atual recuperado pelo File Search quando houver um PDF atual. Não use outros PDFs, conhecimento externo ou memória geral para preencher lacunas.
+Explique em português do Brasil, de forma didática, objetiva e adequada para revisão.
+Quando apropriado, organize: conceito, exemplo, pegadinha de prova, mini questão e feedback.
 Para questões, deixe claro que são questões originais inspiradas no estilo de cobrança, não questões oficiais da FUMARC.
 Não diga que é afiliado à Estratégia Concursos."""
+    if current:
+        instructions += f"\nPDF de estudo atual: {current['filename']}."
     if context_hint:
         instructions += "\nContexto adicional: " + context_hint
-    r = c.responses.create(
-        model=MODEL,
-        instructions=instructions,
-        input=prompt,
-        tools=tools
-    )
-    return r.output_text
+    kwargs={"model":MODEL,"instructions":instructions,"input":prompt,"tools":tools or []}
+    try:
+        r = OpenAI(api_key=key, timeout=120.0, max_retries=2).responses.create(**kwargs)
+        return r.output_text
+    except Exception as e:
+        msg=str(e)
+        if "rate_limit_exceeded" in msg or "429" in msg:
+            raise RuntimeError("A OpenAI atingiu temporariamente o limite de tokens por minuto. Aguarde cerca de 1 minuto e tente novamente.") from e
+        raise
+
+
+@app.get("/api/current-material")
+def current_material():
+    c=conn(); row=c.execute("SELECT * FROM materials ORDER BY id DESC LIMIT 1").fetchone(); c.close()
+    return {"item": dict(row) if row else None}
 
 
 @app.post("/api/ask")
@@ -419,7 +436,6 @@ def ask(text: str = Form(...), mode: str = Form("tutor")):
             "explain": "Explique o conteúdo solicitado passo a passo.",
             "questions": "Crie 5 questões originais de múltipla escolha, inspiradas no estilo FUMARC, com gabarito e explicação.",
             "review": "Faça uma revisão ativa: resumo curto, 5 perguntas e depois aguarde minhas respostas.",
-            "plan": "Use os materiais disponíveis para sugerir páginas/tópicos para a sessão de hoje. Não invente páginas."
         }.get(mode, "")
         return {"ok": True, "answer": ai_answer(text, extra)}
     except Exception as e:
@@ -635,7 +651,7 @@ def _source_prompt(material_id, kind):
         instruction = f"""Você está criando material de revisão EXCLUSIVAMENTE a partir do arquivo PDF anexado, chamado \"{filename}\".
 Disciplina: {subject}. Assunto informado: {topic}.
 NÃO use conhecimento externo, outros arquivos ou memória geral para completar lacunas.
-Crie exatamente 12 flashcards.
+Crie exatamente 10 flashcards.
 REGRA DE PRECISÃO: cada pergunta e cada resposta precisam estar claramente sustentadas pelo PDF. Não acrescente exceções, classificações, datas, leis, regras ou afirmações que não estejam no arquivo. Se houver dúvida sobre um detalhe, prefira não usá-lo.
 Não transforme uma inferência sua em fato do PDF.
 Use aproximadamente 5 básicos, 5 intermediários e 5 no nível \"fumarc\". O rótulo FUMARC significa apenas dificuldade/estilo, não questão oficial.
@@ -687,6 +703,8 @@ def _response_with_file(client, row, instruction, json_mode=True, max_results=8)
     }
     if json_mode:
         kwargs["text"] = {"format": {"type": "json_object"}}
+        # Keep generation compact to protect the organization TPM limit.
+        kwargs["max_output_tokens"] = 3200 if max_results >= 10 else 2200
     try:
         return client.responses.create(**kwargs)
     except Exception as e:
@@ -826,14 +844,13 @@ def _register_pdf_fonts():
 
 
 def _build_mindmap_pdf(title, central, branches, traps, out_path):
-    """Build a readable, non-overlapping mind-map PDF.
-
-    The first page is a true overview (center + branch titles only). Every branch
-    then receives one or more detail pages. Text is wrapped and paginated rather
-    than truncated, so long concepts are never silently cut off.
+    """Create ONE-page, glanceable mind map inspired by the user's reference image.
+    Six colored balloons surround a central theme. Text is condensed but readable;
+    no detail pages and no background illustrations.
     """
     from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib import colors
     from reportlab.lib.units import mm
     from reportlab.pdfbase.pdfmetrics import stringWidth
 
@@ -843,25 +860,11 @@ def _build_mindmap_pdf(title, central, branches, traps, out_path):
     regular,bold=_register_pdf_fonts()
 
     def wrap(text,font,size,maxw):
-        words=str(text or "").split()
+        words=str(text or "").replace("\n"," ").split()
         lines=[]; cur=""
         for word in words:
-            # Break a single very long token instead of clipping it.
-            if stringWidth(word,font,size) > maxw:
-                if cur:
-                    lines.append(cur); cur=""
-                piece=""
-                for ch in word:
-                    test=piece+ch
-                    if stringWidth(test,font,size) <= maxw:
-                        piece=test
-                    else:
-                        if piece: lines.append(piece)
-                        piece=ch
-                if piece: lines.append(piece)
-                continue
             test=(cur+" "+word).strip()
-            if stringWidth(test,font,size) <= maxw:
+            if stringWidth(test,font,size)<=maxw:
                 cur=test
             else:
                 if cur: lines.append(cur)
@@ -869,93 +872,78 @@ def _build_mindmap_pdf(title, central, branches, traps, out_path):
         if cur: lines.append(cur)
         return lines or [""]
 
-    # ---------- Overview page ----------
-    c.setFont(bold,20)
-    c.drawCentredString(W/2,H-15*mm,"MAPA MENTAL — "+str(title)[:100])
-    c.setFont(regular,8)
-    c.drawCentredString(W/2,H-21*mm,"Professor MD • visão geral • conteúdo organizado a partir do PDF selecionado")
+    def fit_lines(text,font,max_size,min_size,maxw,max_lines):
+        for size in [max_size-i*0.4 for i in range(int((max_size-min_size)/0.4)+1)]:
+            lines=wrap(text,font,size,maxw)
+            if len(lines)<=max_lines:
+                return size,lines
+        return min_size,wrap(text,font,min_size,maxw)[:max_lines]
+
+    # Title
+    c.setFont(bold,16); c.drawCentredString(W/2,H-8*mm,"MAPA MENTAL — "+str(title)[:90])
+    c.setFont(regular,7.2); c.drawCentredString(W/2,H-12*mm,"Visão única para revisão • conteúdo baseado exclusivamente no PDF selecionado")
 
     cx,cy=W/2,H/2-2*mm
-    cw,ch=68*mm,34*mm
-    c.setLineWidth(1.5)
-    c.roundRect(cx-cw/2,cy-ch/2,cw,ch,6*mm,stroke=1,fill=0)
-    center_lines=wrap(central,bold,13,cw-10*mm)
-    yy=cy+(len(center_lines)-1)*2.5*mm
-    for line in center_lines:
-        c.setFont(bold,13); c.drawCentredString(cx,yy,line); yy-=5*mm
-    c.setFont(regular,8); c.drawCentredString(cx,cy-12*mm,"TEMA CENTRAL")
+    center_w,center_h=76*mm,40*mm
+    # central
+    c.setFillColor(colors.HexColor("#F4C95D")); c.setStrokeColor(colors.HexColor("#17365D")); c.setLineWidth(1.5)
+    c.roundRect(cx-center_w/2,cy-center_h/2,center_w,center_h,7*mm,fill=1,stroke=1)
+    cs,cl=fit_lines(central,bold,15,10,center_w-12*mm,4)
+    yy=cy+(len(cl)-1)*3.1*mm
+    c.setFillColor(colors.HexColor("#17365D"))
+    for line in cl:
+        c.setFont(bold,cs); c.drawCentredString(cx,yy,line); yy-=5.7*mm
+    c.setFont(regular,7); c.drawCentredString(cx,cy-center_h/2+6*mm,"TEMA CENTRAL")
 
-    # 8 clean branch positions; only titles are placed here to avoid overlap.
-    positions=[(W*.17,H*.72),(W*.17,H*.48),(W*.17,H*.24),(W*.39,H*.78),
-               (W*.61,H*.78),(W*.83,H*.72),(W*.83,H*.48),(W*.83,H*.24)]
-    for i,b in enumerate(list(branches or [])[:8]):
+    # Exactly six balloons, matching the reference composition.
+    positions=[(50*mm,H-42*mm),(50*mm,cy),(50*mm,38*mm),(W-50*mm,H-42*mm),(W-50*mm,cy),(W-50*mm,38*mm)]
+    fills=["#F58B8B","#7DB7E8","#72C9B7","#F3A65A","#70C4C4","#D982B5"]
+    bw,bh=70*mm,50*mm
+    branches=list(branches or [])[:6]
+    while len(branches)<6:
+        branches.append({"title":"Revisão essencial","items":[]})
+
+    for i,b in enumerate(branches):
         x,y=positions[i]
-        title_lines=wrap(b.get("title","Ramo"),bold,9.5,42*mm)[:3]
-        bh=max(18*mm, (len(title_lines)*5+8)*mm)
-        bw=48*mm
-        # Connector terminates at the edge of the title box, not through text.
-        edge_x = x+bw/2 if x<cx else x-bw/2
-        c.line(cx,cy,edge_x,y)
-        c.roundRect(x-bw/2,y-bh/2,bw,bh,4*mm,stroke=1,fill=0)
-        ty=y+(len(title_lines)-1)*2.5*mm
-        for line in title_lines:
-            c.setFont(bold,9.5); c.drawCentredString(x,ty,line); ty-=5*mm
-    c.showPage()
+        # connector first, stopping at balloon edge
+        edge_x=x+bw/2 if x<cx else x-bw/2
+        c.setStrokeColor(colors.HexColor("#7B7B7B")); c.setLineWidth(1.2); c.line(cx,cy,edge_x,y)
+        c.setFillColor(colors.HexColor(fills[i])); c.setStrokeColor(colors.HexColor("#17365D")); c.setLineWidth(1.2)
+        c.roundRect(x-bw/2,y-bh/2,bw,bh,6*mm,fill=1,stroke=1)
+        # title
+        ts,tl=fit_lines(b.get("title","Ramo"),bold,10,7.4,bw-8*mm,2)
+        ty=y+bh/2-8*mm
+        c.setFillColor(colors.HexColor("#17365D"))
+        for line in tl:
+            c.setFont(bold,ts); c.drawCentredString(x,ty,line); ty-=4.3*mm
+        # items: concise bullets, max 5; never overflow the balloon
+        items=[str(v) for v in (b.get("items") or [])[:5]]
+        available_top=ty-1.5*mm; bottom=y-bh/2+5*mm
+        font=7.0
+        for item in items:
+            lines=wrap("• "+item,regular,font,bw-8*mm)
+            # If too tall, try smaller font; still keep whole item together.
+            while len(lines)*3.5*mm > available_top-bottom and font>5.8:
+                font-=0.3; lines=wrap("• "+item,regular,font,bw-8*mm)
+            needed=len(lines)*3.5*mm
+            if available_top-needed < bottom:
+                break
+            yy=available_top
+            for line in lines:
+                c.setFont(regular,font); c.drawString(x-bw/2+4*mm,yy,line); yy-=3.5*mm
+            available_top-=needed+1.2*mm
 
-    # ---------- Detail pages ----------
-    for idx,b in enumerate(list(branches or []),1):
-        items=list(b.get("items") or [])
-        # A branch can span multiple pages. Never slice its text.
-        page_no=1
-        item_index=0
-        while item_index < len(items) or page_no==1:
-            c.setFont(bold,18)
-            heading=f"MAPA MENTAL — {idx}. {str(b.get('title','Ramo'))}"
-            c.drawString(15*mm,H-16*mm,heading[:120])
-            c.setFont(regular,8)
-            c.drawString(15*mm,H-22*mm,f"Detalhamento • página {page_no}")
-
-            x=18*mm; y=H-34*mm; max_y=18*mm; maxw=W-36*mm
-            c.setLineWidth(0.8)
-            while item_index < len(items):
-                text="• "+str(items[item_index])
-                lines=wrap(text,regular,10.5,maxw-6*mm)
-                needed=(len(lines)*5.8*mm)+3*mm
-                if y-needed < max_y and item_index>0:
-                    break
-                c.roundRect(x,y-needed+2*mm,maxw,needed,3*mm,stroke=1,fill=0)
-                yy=y-4*mm
-                for line in lines:
-                    c.setFont(regular,10.5); c.drawString(x+4*mm,yy,line); yy-=5.8*mm
-                y-=needed+3*mm
-                item_index+=1
-            if not items:
-                c.setFont(regular,10.5); c.drawString(x+4*mm,y,"(Nenhum item detalhado foi retornado pelo PDF.)")
-            c.showPage()
-            page_no+=1
-            if item_index>=len(items): break
-
-    # ---------- Traps / exam attention ----------
-    traps=list(traps or [])
+    # Small exam-attention strip at bottom, only if supported by the source.
     if traps:
-        tindex=0; page=1
-        while tindex<len(traps):
-            c.setFont(bold,18); c.drawString(15*mm,H-16*mm,"PEGADINHAS DE PROVA")
-            c.setFont(regular,8); c.drawString(15*mm,H-22*mm,"Somente pontos sustentados pelo PDF selecionado.")
-            y=H-34*mm
-            while tindex<len(traps):
-                lines=wrap(str(traps[tindex]),regular,10.5,W-48*mm)
-                needed=(len(lines)*5.8*mm)+8*mm
-                if y-needed<18*mm and y < H-34*mm: break
-                c.roundRect(18*mm,y-needed+2*mm,W-36*mm,needed,3*mm,stroke=1,fill=0)
-                yy=y-4*mm
-                c.setFont(bold,10.5); c.drawString(22*mm,yy,f"{tindex+1}.")
-                yy-=5.8*mm
-                for line in lines:
-                    c.setFont(regular,10.5); c.drawString(30*mm,yy,line); yy-=5.8*mm
-                y-=needed+3*mm; tindex+=1
-            c.showPage(); page+=1
-    c.save()
+        trap="PEGADINHAS: " + " • ".join(str(t) for t in list(traps)[:2])
+        c.setFillColor(colors.HexColor("#FFF4D6")); c.setStrokeColor(colors.HexColor("#A77B00")); c.setLineWidth(.8)
+        c.roundRect(62*mm,7*mm,W-124*mm,13*mm,4*mm,fill=1,stroke=1)
+        ts,tl=fit_lines(trap,bold,6.8,5.2,W-132*mm,2)
+        yy=15.5*mm
+        c.setFillColor(colors.HexColor("#6D5200"))
+        for line in tl:
+            c.setFont(bold,ts); c.drawCentredString(W/2,yy,line); yy-=3.4*mm
+    c.showPage(); c.save()
 
 
 @app.post("/api/generate/flashcards")

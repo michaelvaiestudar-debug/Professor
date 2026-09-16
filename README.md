@@ -1,4 +1,4 @@
-# Professor MD 4.8 — interface móvel e seleção de PDFs corrigida
+# Professor MD 5.0 — interface móvel e seleção de PDFs corrigida
 
 Esta versão corrige problemas observados no Android/tablet:
 
